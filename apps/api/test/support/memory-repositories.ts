@@ -10,6 +10,7 @@ import {
 } from '../../src/modules/auth/auth.repository';
 import { ProjectKeyTakenError, type ProjectRecord, type ProjectRepository } from '../../src/modules/projects/projects.repository';
 import type { SprintRecord, SprintRepository } from '../../src/modules/sprints/sprints.repository';
+import type { CommentRecord, SubtaskRecord, TaskDetailRecord, TaskRecord, TaskRepository } from '../../src/modules/tasks/tasks.repository';
 import type { Repositories } from '../../src/repositories';
 
 /**
@@ -139,7 +140,7 @@ export function createMemoryRepositories(now: () => Date) {
 
   /* ---------- projects ---------- */
 
-  type StoredProject = Omit<ProjectRecord, 'members' | 'activeSprint'> & { members: { userId: string; addedAt: Date }[] };
+  type StoredProject = Omit<ProjectRecord, 'members' | 'activeSprint' | 'taskCounts'> & { members: { userId: string; addedAt: Date }[] };
   const projects: StoredProject[] = [];
   const toRecord = (p: StoredProject): ProjectRecord => ({
     ...p,
@@ -151,6 +152,10 @@ export function createMemoryRepositories(now: () => Date) {
       const s = sprints.find((x) => x.projectId === p.id && x.status === 'active');
       return s ? { id: s.id, name: s.name } : null;
     })(),
+    taskCounts: {
+      total: tasks.filter((t) => t.projectId === p.id).length,
+      done: tasks.filter((t) => t.projectId === p.id && t.status === 'done').length,
+    },
   });
 
   const projectRepo: ProjectRepository = {
@@ -224,12 +229,14 @@ export function createMemoryRepositories(now: () => Date) {
       s.startedAt = at;
       return toSprintRecord(s);
     },
-    async complete(id, at) {
+    async complete(id, at, moveTo) {
       const s = sprints.find((x) => x.id === id && x.status === 'active');
       if (!s) return 'not_active';
       s.status = 'completed';
       s.completedAt = at;
-      return toSprintRecord(s);
+      let moved = 0;
+      for (const t of tasks) if (t.sprintId === id && t.status !== 'done') { t.sprintId = moveTo; moved++; }
+      return { sprint: toSprintRecord(s), moved };
     },
     async deletePlanned(id) {
       const i = sprints.findIndex((x) => x.id === id && x.status === 'planned');
@@ -239,6 +246,122 @@ export function createMemoryRepositories(now: () => Date) {
     },
   };
 
+  /* ---------- tasks (subtasks and comments are stored with them) ---------- */
+
+  type StoredTask = Omit<TaskRecord, 'projectKey' | 'assignee' | 'reporter' | 'sprint' | 'subtaskTotal' | 'subtaskDone' | 'commentCount'> & {
+    assigneeId: string | null;
+    reporterId: string | null;
+    sprintId: string | null;
+    subtasks: SubtaskRecord[];
+    comments: (Omit<CommentRecord, 'author'> & { authorId: string | null })[];
+  };
+  const tasks: StoredTask[] = [];
+  const nextNumber = new Map<string, number>();
+  const personRef = (id: string | null) => {
+    const u = id ? users.find((x) => x.id === id) : undefined;
+    return u ? { id: u.id, name: u.name } : null;
+  };
+  const toTaskRecord = (t: StoredTask): TaskRecord => {
+    const { assigneeId, reporterId, sprintId, subtasks, comments, ...rest } = t;
+    const s = sprintId ? sprints.find((x) => x.id === sprintId) : undefined;
+    return {
+      ...rest,
+      projectKey: projects.find((p) => p.id === t.projectId)?.key ?? '?',
+      assignee: personRef(assigneeId),
+      reporter: personRef(reporterId),
+      sprint: s ? { id: s.id, name: s.name } : null,
+      subtaskTotal: subtasks.length,
+      subtaskDone: subtasks.filter((x) => x.done).length,
+      commentCount: comments.length,
+    };
+  };
+  const toTaskDetail = (t: StoredTask): TaskDetailRecord => ({
+    ...toTaskRecord(t),
+    subtasks: t.subtasks.toSorted((a, b) => a.position - b.position).map((x) => ({ ...x })),
+    comments: t.comments.map(({ authorId, ...c }) => ({ ...c, author: personRef(authorId) })),
+  });
+
+  const taskRepo: TaskRepository = {
+    listByProject: async (projectId) =>
+      tasks.filter((t) => t.projectId === projectId).toSorted((a, b) => a.number - b.number).map(toTaskRecord),
+    findByNumber: async (projectId, number) => {
+      const t = tasks.find((x) => x.projectId === projectId && x.number === number);
+      return t ? toTaskDetail(t) : null;
+    },
+    async create(data) {
+      const number = nextNumber.get(data.projectId) ?? 101;
+      nextNumber.set(data.projectId, number + 1);
+      const t: StoredTask = { id: randomUUID(), ...data, number, createdAt: now(), updatedAt: now(), subtasks: [], comments: [] };
+      tasks.push(t);
+      return toTaskRecord(t);
+    },
+    async update(id, changes) {
+      const t = tasks.find((x) => x.id === id);
+      if (!t) throw new Error('not found');
+      Object.assign(t, changes, { updatedAt: now() });
+      return toTaskRecord(t);
+    },
+    async delete(id) {
+      const i = tasks.findIndex((x) => x.id === id);
+      if (i >= 0) tasks.splice(i, 1);
+    },
+    async countOpenByAssignee() {
+      const out = new Map<string, number>();
+      for (const t of tasks) if (t.assigneeId && t.status !== 'done') out.set(t.assigneeId, (out.get(t.assigneeId) ?? 0) + 1);
+      return out;
+    },
+    async addSubtask(taskId, title) {
+      const t = tasks.find((x) => x.id === taskId);
+      if (!t) throw new Error('task not found');
+      const s: SubtaskRecord = { id: randomUUID(), title, done: false, position: t.subtasks.length };
+      t.subtasks.push(s);
+      return { ...s };
+    },
+    async updateSubtask(taskId, id, changes) {
+      const s = tasks.find((x) => x.id === taskId)?.subtasks.find((x) => x.id === id);
+      if (!s) return null;
+      Object.assign(s, changes);
+      return { ...s };
+    },
+    async deleteSubtask(taskId, id) {
+      const t = tasks.find((x) => x.id === taskId);
+      const before = t?.subtasks.length ?? 0;
+      if (t) t.subtasks = t.subtasks.filter((x) => x.id !== id);
+      return (t?.subtasks.length ?? 0) < before;
+    },
+    async addComment({ taskId, authorId, body, mentionedUserIds }) {
+      const t = tasks.find((x) => x.id === taskId);
+      if (!t) throw new Error('task not found');
+      const c = { id: randomUUID(), authorId, body, mentionedUserIds, createdAt: now() };
+      t.comments.push(c);
+      return { id: c.id, author: personRef(authorId), body, mentionedUserIds, createdAt: c.createdAt };
+    },
+    async findCommentAuthor(taskId, id) {
+      const c = tasks.find((x) => x.id === taskId)?.comments.find((x) => x.id === id);
+      return c ? { authorId: c.authorId } : null;
+    },
+    async deleteComment(taskId, id) {
+      const t = tasks.find((x) => x.id === taskId);
+      const before = t?.comments.length ?? 0;
+      if (t) t.comments = t.comments.filter((x) => x.id !== id);
+      return (t?.comments.length ?? 0) < before;
+    },
+  };
+
+  // Same effects as the database's foreign keys:
+  // deleting a sprint moves its tasks to the backlog; deleting a project deletes its tasks.
+  const deleteSprintRow = sprintRepo.deletePlanned;
+  sprintRepo.deletePlanned = async (id) => {
+    const ok = await deleteSprintRow(id);
+    if (ok) for (const t of tasks) if (t.sprintId === id) t.sprintId = null;
+    return ok;
+  };
+  const deleteProjectRow = projectRepo.delete;
+  projectRepo.delete = async (id) => {
+    await deleteProjectRow(id);
+    for (let i = tasks.length - 1; i >= 0; i--) if (tasks[i]?.projectId === id) tasks.splice(i, 1);
+  };
+
   const repos: Repositories = {
     users: userRepo,
     refreshTokens: tokenRepo,
@@ -246,6 +369,7 @@ export function createMemoryRepositories(now: () => Date) {
     invites: inviteRepo,
     projects: projectRepo,
     sprints: sprintRepo,
+    tasks: taskRepo,
   };
-  return { repos, users, tokens, grants, invites, projects, sprints };
+  return { repos, users, tokens, grants, invites, projects, sprints, tasks };
 }

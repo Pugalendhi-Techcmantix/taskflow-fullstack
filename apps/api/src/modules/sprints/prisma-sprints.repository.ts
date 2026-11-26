@@ -66,10 +66,16 @@ export function createPrismaSprintRepository(prisma: PrismaClient): SprintReposi
       }
       return (await byId(id)) ?? 'not_planned';
     },
-    async complete(id, at) {
-      const res = await prisma.sprint.updateMany({ where: { id, status: 'active' }, data: { status: 'completed', completedAt: at } });
-      if (res.count !== 1) return 'not_active';
-      return (await byId(id)) ?? 'not_active';
+    async complete(id, at, moveTo) {
+      const moved = await prisma.$transaction(async (tx) => {
+        const res = await tx.sprint.updateMany({ where: { id, status: 'active' }, data: { status: 'completed', completedAt: at } });
+        if (res.count !== 1) return null;
+        const tasks = await tx.task.updateMany({ where: { sprintId: id, status: { not: 'done' } }, data: { sprintId: moveTo } });
+        return tasks.count;
+      });
+      if (moved === null) return 'not_active';
+      const sprint = await byId(id);
+      return sprint ? { sprint, moved } : 'not_active';
     },
     async deletePlanned(id) {
       const res = await prisma.sprint.deleteMany({ where: { id, status: 'planned' } });

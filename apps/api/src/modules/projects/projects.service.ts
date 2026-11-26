@@ -19,6 +19,7 @@ export const toProject = (p: ProjectRecord, viewerId: string): Project => ({
   })),
   isMember: p.members.some((m) => m.userId === viewerId),
   activeSprint: p.activeSprint,
+  taskCounts: p.taskCounts,
   createdAt: p.createdAt.toISOString(),
 });
 

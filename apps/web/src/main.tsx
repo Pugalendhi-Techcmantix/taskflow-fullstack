@@ -13,6 +13,7 @@ import { TeamPage } from './features/team/TeamPage';
 import { ProjectLayout, ProjectOverview } from './features/projects/ProjectPage';
 import { ProjectSectionRedirect } from './features/projects/ProjectSectionRedirect';
 import { SprintsPage } from './features/sprints/SprintsPage';
+import { TasksPage } from './features/tasks/TasksPage';
 import { ProjectsPage } from './features/projects/ProjectsPage';
 import { queryClient } from './lib/query';
 import './styles/global.css';
@@ -38,9 +39,11 @@ const router = createBrowserRouter([
                 children: [
                   { index: true, element: <ProjectOverview /> },
                   { path: 'sprints', element: <SprintsPage /> },
+                  { path: 'tasks', element: <TasksPage /> },
                 ],
               },
               { path: '/sprints', element: <ProjectSectionRedirect section="sprints" /> },
+              { path: '/tasks', element: <ProjectSectionRedirect section="tasks" /> },
               { path: '/team', element: <TeamPage /> },
               ...NAV_ITEMS.filter((n) => n.path !== '/' && !n.built).map((n) => ({ path: n.path, element: <ComingSoonPage path={n.path} /> })),
               { path: '*', element: <NotFoundPage /> },

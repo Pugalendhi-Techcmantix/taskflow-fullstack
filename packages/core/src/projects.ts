@@ -53,6 +53,8 @@ export const project = z.object({
   isMember: z.boolean(),
   /** The sprint currently running in this project, if any. */
   activeSprint: z.object({ id: z.string(), name: z.string() }).nullable(),
+  /** For the progress bar on project cards. */
+  taskCounts: z.object({ total: z.number().int(), done: z.number().int() }),
   createdAt: z.string(),
 });
 export type Project = z.infer<typeof project>;

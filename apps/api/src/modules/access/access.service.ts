@@ -28,7 +28,7 @@ export type AccessConfig = {
 };
 
 export type AccessDeps = {
-  repos: Pick<Repositories, 'users' | 'roles' | 'invites'>;
+  repos: Pick<Repositories, 'users' | 'roles' | 'invites' | 'tasks'>;
   email: EmailSender;
   hashPassword: (password: string) => Promise<string>;
   config: AccessConfig;
@@ -90,7 +90,11 @@ export function createAccessService({ repos, email, hashPassword, config, now = 
 
   /* ---------- members ---------- */
 
-  const listMembers = () => users.list();
+  /** Every member with their number of unfinished assigned tasks (Team page "Open tasks"). */
+  async function listMembers(): Promise<{ user: UserRecord; openTasks: number }[]> {
+    const [list, open] = await Promise.all([users.list(), repos.tasks.countOpenByAssignee()]);
+    return list.map((user) => ({ user, openTasks: open.get(user.id) ?? 0 }));
+  }
 
   async function changeRole(actorId: string, targetId: string, roleId: RoleId): Promise<UserRecord> {
     if (actorId === targetId) throw conflict("You can't change your own role. Ask another Admin.");

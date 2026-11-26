@@ -113,7 +113,7 @@ function MembersCard({ meId, canManage }: { meId: string; canManage: boolean }) 
         <div className="table-scroll">
           <table>
             <thead>
-              <tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col" className="hide-md">Joined</th></tr>
+              <tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Open tasks</th><th scope="col" className="hide-md">Joined</th></tr>
             </thead>
             <tbody>
               {members.data.members.map((m) => {
@@ -143,6 +143,7 @@ function MembersCard({ meId, canManage }: { meId: string; canManage: boolean }) 
                         {ROLE_IDS.map((r) => <option key={r} value={r}>{ROLE_NAMES[r]}</option>)}
                       </select>
                     </td>
+                    <td>{m.openTasks}</td>
                     <td className="muted nowrap hide-md">{shortDate(m.createdAt)}</td>
                   </tr>
                 );

@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router';
 import type { PublicUser } from '@taskflow/core';
 import { signOut, useSession } from '../features/auth/session';
 import { ProjectSwitcher } from '../features/projects/ProjectSwitcher';
+import { NewTaskButton } from '../features/tasks/NewTaskButton';
 import { Avatar } from './Avatar';
 import { Icon } from './icons';
 import { NAV_ITEMS } from './nav';
@@ -65,6 +66,7 @@ export function AppShell() {
             <Icon name="menu" />
           </button>
           <div className="top-actions">
+            <NewTaskButton />
             <UserMenu user={session.user} />
           </div>
         </header>

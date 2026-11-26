@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createSprintInput, projectKeySchema, updateSprintInput } from '@taskflow/core';
+import { completeSprintInput, createSprintInput, projectKeySchema, updateSprintInput } from '@taskflow/core';
 import { z } from 'zod';
 import { parse } from '../../http/errors';
 import type { Guards } from '../access/actor';
@@ -38,7 +38,8 @@ export function createSprintsRouter(sprints: SprintsService, { signedIn, require
 
   router.post('/:id/complete', manage, async (req, res) => {
     const { key, id } = parse(sprintParams, req.params);
-    res.json({ sprint: await sprints.complete(await actorOf(req), key, id) });
+    const input = parse(completeSprintInput, req.body ?? {});
+    res.json(await sprints.complete(await actorOf(req), key, id, input));
   });
 
   router.delete('/:id', manage, async (req, res) => {

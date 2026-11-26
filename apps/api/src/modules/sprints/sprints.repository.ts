@@ -25,8 +25,11 @@ export interface SprintRepository {
   update(id: string, changes: SprintChanges): Promise<SprintRecord>;
   /** planned → active, atomically. The database allows only one active sprint per project. */
   start(id: string, at: Date): Promise<SprintRecord | 'not_planned' | 'another_active'>;
-  /** active → completed, atomically. */
-  complete(id: string, at: Date): Promise<SprintRecord | 'not_active'>;
+  /**
+   * active → completed, and unfinished tasks move to `moveTo` (another sprint id, or null = backlog),
+   * all in one transaction. Returns how many tasks moved.
+   */
+  complete(id: string, at: Date, moveTo: string | null): Promise<{ sprint: SprintRecord; moved: number } | 'not_active'>;
   /** Deletes the sprint only while it is still planned. */
   deletePlanned(id: string): Promise<boolean>;
 }

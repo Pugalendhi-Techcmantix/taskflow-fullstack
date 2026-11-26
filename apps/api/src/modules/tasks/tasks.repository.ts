@@ -1,0 +1,82 @@
+import type { TaskPriority, TaskStatus, TaskType } from '@taskflow/core';
+
+export type PersonRef = { id: string; name: string };
+
+export type TaskRecord = {
+  id: string;
+  projectId: string;
+  projectKey: string;
+  number: number;
+  title: string;
+  description: string;
+  type: TaskType;
+  status: TaskStatus;
+  priority: TaskPriority;
+  points: number | null;
+  assignee: PersonRef | null;
+  reporter: PersonRef | null;
+  sprint: { id: string; name: string } | null;
+  /** "YYYY-MM-DD" */
+  dueDate: string | null;
+  doneAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  subtaskTotal: number;
+  subtaskDone: number;
+  commentCount: number;
+};
+
+export type SubtaskRecord = { id: string; title: string; done: boolean; position: number };
+export type CommentRecord = { id: string; author: PersonRef | null; body: string; mentionedUserIds: string[]; createdAt: Date };
+export type TaskDetailRecord = TaskRecord & { subtasks: SubtaskRecord[]; comments: CommentRecord[] };
+
+export type NewTask = {
+  projectId: string;
+  title: string;
+  description: string;
+  type: TaskType;
+  status: TaskStatus;
+  priority: TaskPriority;
+  points: number | null;
+  assigneeId: string | null;
+  reporterId: string;
+  sprintId: string | null;
+  dueDate: string | null;
+  doneAt: Date | null;
+};
+
+export type TaskChanges = Partial<{
+  title: string;
+  description: string;
+  type: TaskType;
+  status: TaskStatus;
+  priority: TaskPriority;
+  points: number | null;
+  assigneeId: string | null;
+  sprintId: string | null;
+  dueDate: string | null;
+  doneAt: Date | null;
+}>;
+
+export interface TaskRepository {
+  /** Oldest first (by number). */
+  listByProject(projectId: string): Promise<TaskRecord[]>;
+  findByNumber(projectId: string, number: number): Promise<TaskDetailRecord | null>;
+  /** Takes the project's next number atomically: two simultaneous creates never share a key. */
+  create(data: NewTask): Promise<TaskRecord>;
+  update(id: string, changes: TaskChanges): Promise<TaskRecord>;
+  delete(id: string): Promise<void>;
+  /** userId → number of assigned tasks that are not Done (all projects). */
+  countOpenByAssignee(): Promise<Map<string, number>>;
+
+  /** Appends a subtask at the end of the task's checklist. */
+  addSubtask(taskId: string, title: string): Promise<SubtaskRecord>;
+  /** Null if the subtask is not part of this task. */
+  updateSubtask(taskId: string, id: string, changes: { title?: string; done?: boolean }): Promise<SubtaskRecord | null>;
+  deleteSubtask(taskId: string, id: string): Promise<boolean>;
+
+  addComment(data: { taskId: string; authorId: string; body: string; mentionedUserIds: string[] }): Promise<CommentRecord>;
+  /** Who wrote the comment, or null if it is not on this task. */
+  findCommentAuthor(taskId: string, id: string): Promise<{ authorId: string | null } | null>;
+  deleteComment(taskId: string, id: string): Promise<boolean>;
+}

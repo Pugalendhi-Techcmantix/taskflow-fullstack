@@ -4,7 +4,10 @@ import { emailSchema, nameSchema, passwordSchema, publicUser } from './auth';
 
 /* ---------- members ---------- */
 
-export const membersResponse = z.object({ members: z.array(publicUser) });
+/** A team member plus how many unfinished tasks are assigned to them (all projects). */
+export const member = publicUser.extend({ openTasks: z.number().int().nonnegative() });
+export type Member = z.infer<typeof member>;
+export const membersResponse = z.object({ members: z.array(member) });
 export type MembersResponse = z.infer<typeof membersResponse>;
 
 /* ---------- invites ---------- */

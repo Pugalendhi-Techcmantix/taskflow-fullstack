@@ -67,8 +67,9 @@ function ProjectCard({ project: p, isCurrent }: { project: Project; isCurrent: b
           {!p.isMember && <span className="pill" title="You can see this project because you are an Admin">Not a member</span>}
         </div>
         <p className="muted proj-desc">{p.description || 'No description yet.'}</p>
+        <div className="progress" aria-hidden="true"><span style={{ width: `${p.taskCounts.total ? (p.taskCounts.done / p.taskCounts.total) * 100 : 0}%` }} /></div>
         <div className="proj-foot">
-          <span className="muted small">{p.key} · {plural(p.members.length, 'member')}</span>
+          <span className="muted small">{p.taskCounts.done} of {plural(p.taskCounts.total, 'task')} done</span>
           <span className="stack" aria-label={`Members: ${p.members.map((m) => m.name).join(', ')}`}>
             {p.members.slice(0, 5).map((m) => <Avatar key={m.id} id={m.id} name={m.name} size="sm" title={m.name} />)}
             {p.members.length > 5 && <span className="avatar sm more">+{p.members.length - 5}</span>}

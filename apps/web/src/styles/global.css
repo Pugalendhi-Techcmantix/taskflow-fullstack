@@ -295,3 +295,93 @@ input[type='date'].input { min-height: 38px; }
 .proj-key.long { font-size: 9.5px; letter-spacing: 0; }
 .proj-key.lg.long { font-size: 11px; }
 .proj-key.sm.long { font-size: 7.5px; }
+
+/* tasks: badges and type icons (colours from the prototype) */
+:root { --blue: #2563eb; --blue-soft: #e8f0fe; --purple: #7c3aed; --purple-soft: #f1ebfe; --gray-soft: #eef0f4; }
+[data-theme='dark'] { --blue: #60a5fa; --blue-soft: #162544; --purple: #a78bfa; --purple-soft: #2a1f45; --gray-soft: #262a35; }
+.p-critical { background: var(--red-soft); color: var(--red); }
+.p-high { background: var(--amber-soft); color: var(--amber); }
+.p-medium { background: var(--blue-soft); color: var(--blue); }
+.p-low { background: var(--gray-soft); color: var(--muted); }
+.s-todo { background: var(--gray-soft); color: var(--muted); }
+.s-in_progress { background: var(--blue-soft); color: var(--blue); }
+.s-in_review { background: var(--purple-soft); color: var(--purple); }
+.s-done { background: var(--green-soft); color: var(--green); }
+.type-icon { width: 16px; height: 16px; border-radius: 4px; display: inline-grid; place-items: center; color: #fff; font-size: 10px; font-weight: 700; flex: none; }
+.type-story { background: #16a34a; }
+.type-task { background: #2563eb; }
+.type-bug { background: #dc2626; }
+.key { font-size: 12px; color: var(--muted); font-weight: 500; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.key-cell { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+
+/* data grid */
+table.grid tbody tr.click { cursor: pointer; }
+table.grid tbody tr.click:hover td { background: var(--surface-2); }
+table.grid tbody tr.click:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.th-sort { font: inherit; color: inherit; font-weight: 600; padding: 0; }
+.th-sort:hover { color: var(--text); }
+.title-cell { min-width: 220px; max-width: 420px; }
+.title-wrap { display: grid; gap: 2px; }
+.title-wrap b { font-weight: 500; }
+.task-counts { display: flex; gap: 10px; }
+.top-actions .btn.primary { padding: 7px 12px; }
+
+/* task dialog (prototype "task drawer") */
+dialog.modal.lg { width: min(920px, calc(100% - 32px)); }
+.task-head { display: flex; gap: 8px; align-items: center; }
+.task-head-actions { display: flex; gap: 6px; align-items: center; }
+.task-grid { display: grid; grid-template-columns: 1fr 260px; }
+.task-main { padding: 20px; border-right: 1px solid var(--border); min-width: 0; }
+.task-side { padding: 18px 20px; background: var(--surface-2); }
+.title-input { font: inherit; font-size: 20px; font-weight: 600; width: 100%; border: 1px solid transparent; border-radius: 8px; padding: 4px 8px; margin-left: -8px; background: transparent; color: var(--text); }
+.title-input:hover:not(:disabled) { border-color: var(--border); }
+.title-input:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+.sub-h { font-size: 13px; font-weight: 600; margin: 18px 0 8px; display: flex; align-items: baseline; gap: 8px; }
+.save-ind { font-size: 12px; color: var(--faint); font-weight: 400; }
+.coming { margin-top: 18px; }
+.task-meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; font-size: 12px; color: var(--muted); margin-top: 14px; }
+.task-meta dd { color: var(--text); }
+.modal-foot.flat { border-top: none; padding: 14px 0 0; }
+@media (max-width: 860px) {
+  .task-grid { grid-template-columns: 1fr; }
+  .task-main { border-right: none; }
+}
+@media (max-width: 520px) { .hide-sm { display: none; } }
+dialog.modal:focus, dialog.modal:focus-visible { outline: none; }
+
+/* subtasks and comments (prototype) */
+.progress { height: 8px; background: var(--surface-2); border-radius: 5px; overflow: hidden; margin: 2px 0 8px; }
+.progress > span { display: block; height: 100%; background: var(--accent); border-radius: 5px; transition: width .2s; }
+.subtask-list, .comment-list { list-style: none; }
+.subtask-list li { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.subtask-list input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+.subtask-list li.done span { text-decoration: line-through; color: var(--faint); }
+.subtask-list li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.icon-btn.sm { width: 26px; height: 26px; font-size: 16px; }
+.empty-line { font-size: 13px; padding: 4px 0; border: none !important; }
+.add-line { display: flex; gap: 8px; margin-top: 10px; }
+.comment { display: flex; gap: 10px; margin-bottom: 12px; }
+.comment .bubble { background: var(--surface-2); border-radius: 10px; padding: 8px 12px; flex: 1; min-width: 0; }
+.comment .who { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+.comment-body { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 2px; }
+.comment.new { margin-top: 12px; }
+.comment .grow { flex: 1; min-width: 0; }
+.mention { background: var(--accent-soft); color: var(--accent-text); border-radius: 4px; padding: 0 2px; font-weight: 600; }
+[data-theme='dark'] .mention { color: var(--accent); }
+.link-btn { margin-left: auto; font-size: 12px; color: var(--muted); text-decoration: underline; }
+.link-btn:hover { color: var(--red); }
+
+/* sprint cards with tasks + backlog (prototype) */
+.sprint .progress { margin: 12px 0 6px; }
+.progress.done > span { background: var(--green); }
+.proj .progress { margin: 0 0 10px; }
+.task-rows { list-style: none; margin-top: 10px; }
+.task-rows li { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); padding: 4px 0; }
+.task-row { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 6px 4px; border-radius: 6px; text-align: left; }
+.task-row:hover { background: var(--surface-2); }
+.task-row .title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avatar.empty { background: var(--surface-2) !important; border: 1px dashed var(--faint); }
+.input.compact.mini { min-width: 0; width: 150px; padding: 4px 26px 4px 8px; font-size: 12px; }
+.more-line { padding-top: 8px; }
+.sprint.backlog { border-style: dashed; }
+@media (max-width: 600px) { .task-rows .badge { display: none; } .input.compact.mini { width: 120px; } }

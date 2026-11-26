@@ -23,6 +23,9 @@ model User {
   invitesSent        Invite[]        @relation("InvitedBy")
   projectsCreated    Project[]       @relation("ProjectCreator")
   projectMemberships ProjectMember[]
+  tasksAssigned      Task[]          @relation("TaskAssignee")
+  tasksReported      Task[]          @relation("TaskReporter")
+  comments           Comment[]       @relation("CommentAuthor")
 
   @@index([roleId])
   @@map("users")
@@ -105,19 +108,22 @@ model Invite {
 
 /// A project. `key` (2–5 capital letters) is unique and never changes: task IDs like TF-101 use it.
 model Project {
-  id          String   @id @default(uuid(7)) @db.Uuid
-  key         String   @unique
-  name        String
-  description String   @default("")
+  id             String   @id @default(uuid(7)) @db.Uuid
+  key            String   @unique
+  name           String
+  description    String   @default("")
   /// One of the 8 palette colours (#rrggbb)
-  color       String
-  createdById String?  @map("created_by_id") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  color          String
+  createdById    String?  @map("created_by_id") @db.Uuid
+  /// Next task number to hand out (TF-101, TF-102, …). Only ever increases.
+  nextTaskNumber Int      @default(101) @map("next_task_number")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   createdBy User?           @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: SetNull)
   members   ProjectMember[]
   sprints   Sprint[]
+  tasks     Task[]
 
   @@map("projects")
 }
@@ -153,7 +159,78 @@ model Sprint {
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
 
   @@index([projectId, status])
   @@map("sprints")
+}
+
+/// A task or issue. Its key is "<project key>-<number>", e.g. TF-101; numbers are never reused.
+model Task {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  number      Int
+  title       String
+  description String    @default("")
+  /// story | task | bug
+  type        String    @default("task")
+  /// todo | in_progress | in_review | done
+  status      String    @default("todo")
+  /// critical | high | medium | low
+  priority    String    @default("medium")
+  /// 1, 2, 3, 5, 8 or 13; null = not estimated
+  points      Int?
+  assigneeId  String?   @map("assignee_id") @db.Uuid
+  reporterId  String?   @map("reporter_id") @db.Uuid
+  /// null = in the backlog
+  sprintId    String?   @map("sprint_id") @db.Uuid
+  dueDate     DateTime? @map("due_date") @db.Date
+  /// When the task last became Done (for burndown and reports)
+  doneAt      DateTime? @map("done_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User?     @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter User?     @relation("TaskReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  sprint   Sprint?   @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  subtasks Subtask[]
+  comments Comment[]
+
+  @@unique([projectId, number])
+  @@index([projectId, status])
+  @@index([sprintId])
+  @@index([assigneeId])
+  @@map("tasks")
+}
+
+/// A checklist item inside a task.
+model Subtask {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  title     String
+  done      Boolean  @default(false)
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, position])
+  @@map("subtasks")
+}
+
+/// A comment on a task. `mentionedUserIds` drives @mention notifications (Module 9).
+model Comment {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  taskId           String   @map("task_id") @db.Uuid
+  authorId         String?  @map("author_id") @db.Uuid
+  body             String
+  mentionedUserIds String[] @default([]) @map("mentioned_user_ids") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  task   Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User? @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([taskId, createdAt])
+  @@map("comments")
 }

@@ -6,6 +6,7 @@ import { createAccessService } from '../../src/modules/access/access.service';
 import { createAuthService } from '../../src/modules/auth/auth.service';
 import { createProjectsService } from '../../src/modules/projects/projects.service';
 import { createSprintsService } from '../../src/modules/sprints/sprints.service';
+import { createTasksService } from '../../src/modules/tasks/tasks.service';
 import { createMemoryRepositories } from './memory-repositories';
 
 /** A full app wired to in-memory dummy data, a fake mailbox and a clock the test controls. No database needed. */
@@ -49,6 +50,7 @@ export function createTestApp() {
     access,
     projects,
     sprints: createSprintsService({ repos: store.repos, projects, now: clock.now }),
+    tasks: createTasksService({ repos: store.repos, projects, now: clock.now }),
     checkDatabase: async () => {},
     corsOrigins: ['http://localhost:5200'],
     secureCookies: false,

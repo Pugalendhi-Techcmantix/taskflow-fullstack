@@ -8,6 +8,8 @@ const withMembers = {
     orderBy: [{ addedAt: 'asc' }, { userId: 'asc' }],
   },
   sprints: { where: { status: 'active' }, select: { id: true, name: true }, take: 1 },
+  tasks: { where: { status: 'done' }, select: { id: true } },
+  _count: { select: { tasks: true } },
 } satisfies Prisma.ProjectInclude;
 
 type ProjectRow = Prisma.ProjectGetPayload<{ include: typeof withMembers }>;
@@ -30,6 +32,7 @@ const toProjectRecord = (p: ProjectRow): ProjectRecord => ({
     addedAt: m.addedAt,
   })),
   activeSprint: p.sprints[0] ?? null,
+  taskCounts: { total: p._count.tasks, done: p.tasks.length },
 });
 
 const prismaCode = (err: unknown) => (err instanceof Prisma.PrismaClientKnownRequestError ? err.code : undefined);

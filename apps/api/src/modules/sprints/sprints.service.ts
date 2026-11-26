@@ -2,11 +2,13 @@ import {
   MAX_SPRINT_DAYS,
   daysBetween,
   sortSprints,
+  ERROR_CODES,
+  type CompleteSprintInput,
   type CreateSprintInput,
   type Sprint,
   type UpdateSprintInput,
 } from '@taskflow/core';
-import { conflict, notFoundError } from '../../http/errors';
+import { AppError, conflict, notFoundError } from '../../http/errors';
 import type { Repositories } from '../../repositories';
 import type { Actor } from '../access/actor';
 import type { ProjectsService } from '../projects/projects.service';
@@ -84,11 +86,20 @@ export function createSprintsService(deps: {
     return toSprint(result);
   }
 
-  async function complete(actor: Actor, projectKey: string, sprintId: string): Promise<Sprint> {
+  /** Unfinished tasks go to the backlog or to another planned sprint of the same project. */
+  async function complete(actor: Actor, projectKey: string, sprintId: string, input: CompleteSprintInput): Promise<{ sprint: Sprint; movedTasks: number }> {
     const s = await sprintIn(actor, projectKey, sprintId);
-    const result = await sprints.complete(s.id, now());
+    let moveTo: string | null = null;
+    if (input.moveUnfinishedTo !== 'backlog') {
+      const target = await sprints.findById(input.moveUnfinishedTo);
+      if (!target || target.projectId !== s.projectId || target.id === s.id || target.status !== 'planned') {
+        throw new AppError(400, ERROR_CODES.validation, 'Unfinished tasks can only move to a planned sprint of this project', { moveUnfinishedTo: 'Pick a planned sprint or the backlog' });
+      }
+      moveTo = target.id;
+    }
+    const result = await sprints.complete(s.id, now(), moveTo);
     if (result === 'not_active') throw conflict('Only the active sprint can be completed.');
-    return toSprint(result);
+    return { sprint: toSprint(result.sprint), movedTasks: result.moved };
   }
 
   async function remove(actor: Actor, projectKey: string, sprintId: string): Promise<void> {

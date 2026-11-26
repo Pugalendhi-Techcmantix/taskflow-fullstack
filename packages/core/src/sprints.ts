@@ -77,6 +77,10 @@ export const sprint = z.object({
 });
 export type Sprint = z.infer<typeof sprint>;
 
+/** Where unfinished tasks go when a sprint is completed: the backlog or another (planned) sprint. */
+export const completeSprintInput = z.object({ moveUnfinishedTo: z.union([z.literal('backlog'), z.uuid('Pick a sprint')]).default('backlog') });
+export type CompleteSprintInput = z.infer<typeof completeSprintInput>;
+
 export const sprintsResponse = z.object({ sprints: z.array(sprint) });
 export const sprintResponse = z.object({ sprint });
 

@@ -87,13 +87,14 @@ Checked side by side on 2026-11-26 (Projects, Sprints, Team & roles, Sign in). T
 
 | Prototype element | Where it appears | Built in |
 |---|---|---|
-| **+ New task** button in the top bar | Every page | Module 5 |
-| Project card progress bar ("8 of 25 tasks done") | Projects | Module 5 |
-| Sprint card progress, "x of y tasks done · points", task list, "+ N more · see all" | Sprints | Module 5 |
-| **Backlog** card with "Move to sprint…" | Sprints | Module 5 |
-| **Open tasks** column | Team & roles | Module 5 |
+| **+ New task** button in the top bar | Every page | ✅ Module 5 |
+| Project card progress bar ("8 of 25 tasks done") | Projects | ✅ Module 5 |
+| Sprint card progress, "x of y tasks done · points", task list, "+ N more · see all" | Sprints | ✅ Module 5 |
+| **Backlog** card with "Move to sprint…" | Sprints | ✅ Module 5 |
+| **Open tasks** column | Team & roles | ✅ Module 5 |
 | **Open board** button on the active sprint | Sprints | Module 6 |
 | Global search bar ("press /") and keyboard-shortcut help (`?`, `C`, `G` then a letter) | Top bar | Module 7 |
+| **History** list inside the task dialog | Task dialog | Module 8 |
 | Notification bell with unread count | Top bar | Module 9 |
 | Dashboard (stats, burndown, workload, my tasks, recent activity) | Dashboard | Module 10 |
 
@@ -152,8 +153,13 @@ Order follows dependencies: each module builds on the ones before it.
 ### Module 5 — Task & Issue Management
 | | |
 |---|---|
-| **Features** | Create, edit and delete tasks; type (Story/Task/Bug), status, priority, story points, assignee, sprint, due date; task keys like `TF-101`; detail dialog; **subtasks**; **comments** with **@mentions**; description autosave; reusable typed `<DataGrid<T>>` |
-| **Tables** | `tasks`, `subtasks`, `comments`, plus a per-project key sequence |
+| **Features** | Create, edit and delete tasks; type (Story/Task/Bug), status (To Do / In Progress / In Review / Done), priority (Critical/High/Medium/Low), story points (1, 2, 3, 5, 8, 13), assignee (project members only), sprint or backlog, due date; task keys like `TF-101` (per project, start at 101, never reused); detail dialog; **subtasks**; **comments** with **@mentions**; description autosave; reusable typed `<DataGrid<T>>`; **+ New task** in the top bar |
+| **From Module 4** | **Backlog** on the Sprints page ("Move to sprint…"); **Complete sprint** asks where unfinished tasks go (next planned sprint or backlog); deleting a planned sprint moves its tasks to the backlog |
+| **Prototype parity** | Progress bars on project and sprint cards, sprint task list with "+ N more · see all", **Open tasks** column on Team & roles |
+| **Build order** | 5a tasks core (table, detail dialog, new task) → 5b subtasks, comments, mentions, autosave → 5c sprint integration and progress |
+| **Permissions** | Create `task:create`; edit `task:update`; delete `task:delete`; comment `comment:create` (delete your own comment; Admins can delete any) |
+| **URLs** | `/projects/:key/tasks` (table); `?task=TF-107` opens that task's dialog (shareable); `/tasks` opens the last project's tasks |
+| **Tables** | `tasks` (+ `projects.next_task_number`), `subtasks`, `comments` |
 | **Done when** | Every field is editable with optimistic save and rollback, keys never repeat, and the permissions from Module 2 apply. |
 
 ### Module 6 — Kanban Board (Drag & Drop)
@@ -206,7 +212,7 @@ Order follows dependencies: each module builds on the ones before it.
 | 2 | Roles & Permissions | ✅ Approved 2026-11-26 |
 | 3 | Projects | ✅ Approved 2026-11-26 |
 | 4 | Sprints | ✅ Approved 2026-11-26 |
-| 5 | Tasks & Issues | ⬜ Not started |
+| 5 | Tasks & Issues | ✅ Approved 2026-11-26 |
 | 6 | Kanban Board | ⬜ Not started |
 | 7 | Search, Filters & Pagination | ⬜ Not started |
 | 8 | Activity History | ⬜ Not started |

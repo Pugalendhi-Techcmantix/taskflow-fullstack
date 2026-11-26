@@ -13,6 +13,8 @@ import { createProjectsRouter } from './modules/projects/projects.routes';
 import type { ProjectsService } from './modules/projects/projects.service';
 import { createSprintsRouter } from './modules/sprints/sprints.routes';
 import type { SprintsService } from './modules/sprints/sprints.service';
+import { createTasksRouter } from './modules/tasks/tasks.routes';
+import type { TasksService } from './modules/tasks/tasks.service';
 
 /** Everything the HTTP layer needs. server.ts wires real Prisma services; tests wire in-memory ones. */
 export type AppDeps = {
@@ -20,6 +22,7 @@ export type AppDeps = {
   access: AccessService;
   projects: ProjectsService;
   sprints: SprintsService;
+  tasks: TasksService;
   /** Resolves when the database answers; rejects otherwise. */
   checkDatabase: () => Promise<void>;
   corsOrigins: string[];
@@ -53,6 +56,7 @@ export function createApp(deps: AppDeps) {
 
   app.use('/api/auth', createAuthRouter(deps.auth, deps.access, { secureCookies: deps.secureCookies, rateLimit: deps.rateLimit }));
   app.use('/api/projects/:key/sprints', createSprintsRouter(deps.sprints, guards));
+  app.use('/api/projects/:key/tasks', createTasksRouter(deps.tasks, guards));
   app.use('/api/projects', createProjectsRouter(deps.projects, guards));
   app.use('/api', createAccessRouter(deps.access, guards));
 

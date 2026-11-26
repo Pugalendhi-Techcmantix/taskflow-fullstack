@@ -6,7 +6,7 @@ export const NAV_ITEMS = [
   { path: '/projects', label: 'Projects', icon: 'folder', module: 3, section: 'main', built: true },
   { path: '/board', label: 'Board', icon: 'board', module: 6, section: 'main', built: false },
   { path: '/sprints', label: 'Sprints', icon: 'sprint', module: 4, section: 'main', built: true },
-  { path: '/tasks', label: 'Tasks & issues', icon: 'list', module: 5, section: 'main', built: false },
+  { path: '/tasks', label: 'Tasks & issues', icon: 'list', module: 5, section: 'main', built: true },
   { path: '/team', label: 'Team & roles', icon: 'shield', module: 2, section: 'workspace', built: true },
   { path: '/activity', label: 'Activity history', icon: 'clock', module: 8, section: 'workspace', built: false },
 ] as const satisfies ReadonlyArray<{ path: string; label: string; icon: IconName; module: number; section: 'main' | 'workspace'; built: boolean }>;

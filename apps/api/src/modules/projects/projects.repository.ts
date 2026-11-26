@@ -14,6 +14,7 @@ export type ProjectRecord = {
   /** Oldest first. */
   members: ProjectMemberRecord[];
   activeSprint: { id: string; name: string } | null;
+  taskCounts: { total: number; done: number };
 };
 
 export type NewProject = { key: string; name: string; description: string; color: ProjectColor; createdById: string };

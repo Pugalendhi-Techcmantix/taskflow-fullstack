@@ -35,7 +35,7 @@ export function createAccessRouter(access: AccessService, { signedIn, requirePer
   /* ---------- members ---------- */
 
   router.get('/members', signedIn, async (_req, res) => {
-    const body: MembersResponse = { members: (await access.listMembers()).map(toPublicUser) };
+    const body: MembersResponse = { members: (await access.listMembers()).map((m) => ({ ...toPublicUser(m.user), openTasks: m.openTasks })) };
     res.json(body);
   });
 

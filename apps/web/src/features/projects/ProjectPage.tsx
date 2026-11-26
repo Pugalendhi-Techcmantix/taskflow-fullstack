@@ -54,6 +54,7 @@ export function ProjectLayout() {
       </div>
       <nav className="tabs-line" aria-label="Project sections">
         <NavLink end to={`/projects/${p.key}`} onClick={() => rememberProject(p.key)}>Overview</NavLink>
+        <NavLink to={`/projects/${p.key}/tasks`} onClick={() => rememberProject(p.key)}>Tasks</NavLink>
         <NavLink to={`/projects/${p.key}/sprints`} onClick={() => rememberProject(p.key)}>Sprints</NavLink>
       </nav>
       <Outlet context={p} />

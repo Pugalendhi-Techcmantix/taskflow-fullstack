@@ -2,6 +2,7 @@ import type { InviteRepository, RoleRepository } from './modules/access/access.r
 import type { RefreshTokenRepository, UserRepository } from './modules/auth/auth.repository';
 import type { ProjectRepository } from './modules/projects/projects.repository';
 import type { SprintRepository } from './modules/sprints/sprints.repository';
+import type { TaskRepository } from './modules/tasks/tasks.repository';
 
 /** Every storage dependency of the API. Prisma in production, in-memory fakes in tests. */
 export type Repositories = {
@@ -11,4 +12,5 @@ export type Repositories = {
   invites: InviteRepository;
   projects: ProjectRepository;
   sprints: SprintRepository;
+  tasks: TaskRepository;
 };
