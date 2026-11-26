@@ -10,17 +10,15 @@ import {
 import { z } from 'zod';
 import { parse } from '../../http/errors';
 import { toPublicUser } from '../auth/auth.service';
-import { createRequireAuth, currentUserId } from '../auth/require-auth';
+import { currentUserId } from '../auth/require-auth';
+import type { Guards } from './actor';
 import type { AccessService } from './access.service';
-import { createPermissionGuard } from './require-permission';
 
 const idParam = z.object({ id: z.uuid('Invalid id') });
 
 /** /api/roles, /api/members, /api/invites — each route needs a signed-in user; changes also need a permission. */
-export function createAccessRouter(access: AccessService, verifyAccessToken: (token: string) => string): Router {
+export function createAccessRouter(access: AccessService, { signedIn, requirePermission }: Guards): Router {
   const router = Router();
-  const requirePermission = createPermissionGuard(access);
-  const signedIn = createRequireAuth(verifyAccessToken);
 
   /* ---------- roles & permission matrix ---------- */
 

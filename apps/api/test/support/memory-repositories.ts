@@ -8,6 +8,7 @@ import {
   type UserRecord,
   type UserRepository,
 } from '../../src/modules/auth/auth.repository';
+import { ProjectKeyTakenError, type ProjectRecord, type ProjectRepository } from '../../src/modules/projects/projects.repository';
 import type { Repositories } from '../../src/repositories';
 
 /**
@@ -135,6 +136,57 @@ export function createMemoryRepositories(now: () => Date) {
     },
   };
 
-  const repos: Repositories = { users: userRepo, refreshTokens: tokenRepo, roles: roleRepo, invites: inviteRepo };
-  return { repos, users, tokens, grants, invites };
+  /* ---------- projects ---------- */
+
+  type StoredProject = Omit<ProjectRecord, 'members'> & { members: { userId: string; addedAt: Date }[] };
+  const projects: StoredProject[] = [];
+  const toRecord = (p: StoredProject): ProjectRecord => ({
+    ...p,
+    members: p.members.flatMap((m) => {
+      const u = users.find((x) => x.id === m.userId);
+      return u ? [{ userId: u.id, name: u.name, email: u.email, roleId: u.roleId, addedAt: m.addedAt }] : [];
+    }),
+  });
+
+  const projectRepo: ProjectRepository = {
+    listVisible: async (userId, all) =>
+      projects.filter((p) => all || p.members.some((m) => m.userId === userId)).map(toRecord),
+    findByKey: async (key) => {
+      const p = projects.find((x) => x.key === key);
+      return p ? toRecord(p) : null;
+    },
+    keyExists: async (key) => projects.some((p) => p.key === key),
+    async create(data) {
+      if (projects.some((p) => p.key === data.key)) throw new ProjectKeyTakenError();
+      const p: StoredProject = { id: randomUUID(), ...data, createdAt: now(), updatedAt: now(), members: [{ userId: data.createdById, addedAt: now() }] };
+      projects.push(p);
+      return toRecord(p);
+    },
+    async update(id, changes) {
+      const p = projects.find((x) => x.id === id);
+      if (!p) throw new Error('not found');
+      Object.assign(p, changes, { updatedAt: now() });
+      return toRecord(p);
+    },
+    async delete(id) {
+      const i = projects.findIndex((x) => x.id === id);
+      if (i >= 0) projects.splice(i, 1);
+    },
+    async addMember(projectId, userId) {
+      const p = projects.find((x) => x.id === projectId);
+      if (!p || !users.some((u) => u.id === userId)) return 'no_such_user';
+      if (p.members.some((m) => m.userId === userId)) return 'already_member';
+      p.members.push({ userId, addedAt: now() });
+      return 'added';
+    },
+    async removeMember(projectId, userId) {
+      const p = projects.find((x) => x.id === projectId);
+      const before = p?.members.length ?? 0;
+      if (p) p.members = p.members.filter((m) => m.userId !== userId);
+      return (p?.members.length ?? 0) < before;
+    },
+  };
+
+  const repos: Repositories = { users: userRepo, refreshTokens: tokenRepo, roles: roleRepo, invites: inviteRepo, projects: projectRepo };
+  return { repos, users, tokens, grants, invites, projects };
 }

@@ -4,6 +4,7 @@ import { createConsoleEmailSender, createSmtpEmailSender } from './email/email-s
 import { env, isProduction } from './env';
 import { createAccessService } from './modules/access/access.service';
 import { createAuthService } from './modules/auth/auth.service';
+import { createProjectsService } from './modules/projects/projects.service';
 import { createPrismaRepositories } from './prisma-repositories';
 
 /** Composition root: the only place that connects the app to the real database, email and environment. */
@@ -35,9 +36,12 @@ const access = createAccessService({
   config: { appUrl: env.APP_URL, inviteTtlDays: env.INVITE_TTL_DAYS },
 });
 
+const projects = createProjectsService(repos);
+
 const app = createApp({
   auth,
   access,
+  projects,
   checkDatabase: async () => {
     await prisma.$queryRaw`SELECT 1`;
   },

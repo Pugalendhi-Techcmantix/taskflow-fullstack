@@ -10,6 +10,8 @@ import { RequireAuth } from './features/auth/RequireAuth';
 import { restoreSession } from './features/auth/session';
 import { AcceptInvitePage } from './features/team/AcceptInvitePage';
 import { TeamPage } from './features/team/TeamPage';
+import { ProjectPage } from './features/projects/ProjectPage';
+import { ProjectsPage } from './features/projects/ProjectsPage';
 import { queryClient } from './lib/query';
 import './styles/global.css';
 
@@ -27,6 +29,8 @@ const router = createBrowserRouter([
             element: <AppShell />,
             children: [
               { index: true, element: <HomePage /> },
+              { path: '/projects', element: <ProjectsPage /> },
+              { path: '/projects/:key', element: <ProjectPage /> },
               { path: '/team', element: <TeamPage /> },
               ...NAV_ITEMS.filter((n) => n.path !== '/' && !n.built).map((n) => ({ path: n.path, element: <ComingSoonPage path={n.path} /> })),
               { path: '*', element: <NotFoundPage /> },

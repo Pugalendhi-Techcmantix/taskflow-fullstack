@@ -18,9 +18,11 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  role          Role           @relation(fields: [roleId], references: [id])
-  refreshTokens RefreshToken[]
-  invitesSent   Invite[]       @relation("InvitedBy")
+  role               Role            @relation(fields: [roleId], references: [id])
+  refreshTokens      RefreshToken[]
+  invitesSent        Invite[]        @relation("InvitedBy")
+  projectsCreated    Project[]       @relation("ProjectCreator")
+  projectMemberships ProjectMember[]
 
   @@index([roleId])
   @@map("users")
@@ -99,4 +101,36 @@ model Invite {
 
   @@index([email])
   @@map("invites")
+}
+
+/// A project. `key` (2–5 capital letters) is unique and never changes: task IDs like TF-101 use it.
+model Project {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  key         String   @unique
+  name        String
+  description String   @default("")
+  /// One of the 8 palette colours (#rrggbb)
+  color       String
+  createdById String?  @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  createdBy User?           @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  members   ProjectMember[]
+
+  @@map("projects")
+}
+
+/// Who belongs to which project. Admins can see every project without being a member.
+model ProjectMember {
+  projectId String   @map("project_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  addedAt   DateTime @default(now()) @map("added_at") @db.Timestamptz(3)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
 }

@@ -114,9 +114,12 @@ Order follows dependencies: each module builds on the ones before it.
 ### Module 3 — Project Management
 | | |
 |---|---|
-| **Features** | Create and edit projects, unique project key (2–5 capital letters, async check), description, colour, members, project switcher, progress per project |
-| **Tables** | `projects`, `project_members` |
-| **Done when** | Projects CRUD works, a duplicate key is rejected, and a user only sees projects they are a member of. |
+| **Features** | Create and edit projects; unique project key (2–5 capital letters, suggested from the name, live availability check, **can't be changed after creation**); description; colour (8-colour palette); members (add or remove workspace members); delete with typed-key confirmation; project switcher in the sidebar; progress per project (shows real numbers once Module 5 adds tasks) |
+| **Visibility** | A project is visible to its members and to every Admin. The creator becomes a member automatically. Non-members get 404, so a project's existence isn't revealed. |
+| **Permissions** | Create needs `project:create`; edit and members need `project:update`; delete needs `project:delete` |
+| **URLs** | `/projects` (grid), `/projects/:key` (overview, members, settings). Later modules add `/projects/:key/board`, `/sprints` and `/tasks`. |
+| **Tables** | `projects`, `project_members` (+ database CHECK constraints on key and colour format) |
+| **Done when** | Projects CRUD works, a duplicate key is rejected, and a user only sees projects they are a member of (Admins see all). |
 
 ### Module 4 — Sprint Management
 | | |
@@ -180,7 +183,7 @@ Order follows dependencies: each module builds on the ones before it.
 | 0 | Project setup | ✅ Approved 2026-11-26 |
 | 1 | Authentication & Users | ✅ Approved 2026-11-26 |
 | 2 | Roles & Permissions | ✅ Approved 2026-11-26 |
-| 3 | Projects | ⏳ In progress |
+| 3 | Projects | ✅ Approved 2026-11-26 |
 | 4 | Sprints | ⬜ Not started |
 | 5 | Tasks & Issues | ⬜ Not started |
 | 6 | Kanban Board | ⬜ Not started |
@@ -209,3 +212,5 @@ Legend: ⬜ not started · ⏳ in progress · 🧪 waiting for user test · ✅ 
 | 2026-11-26 | SMTP = Gmail (smtp.gmail.com:587, STARTTLS, App password) in `apps/api/.env`; the API verifies the login at startup | User provided a Gmail account. Credentials live only in the git-ignored `.env`. |
 | 2026-11-26 | First account = Admin, later public sign-ups = Viewer | User's choice; safest default |
 | 2026-11-26 | Roles are fixed (4) with text ids (`admin`, `project_manager`, `developer`, `viewer`); their permissions are editable | Matches the prototype; there's no need for custom roles in v1 |
+| 2026-11-26 | Project key can't be changed after creation; it's used in URLs (`/projects/TF`) | Task IDs (`TF-101`) and shared links would break if the key changed |
+| 2026-11-26 | Projects are visible to members plus all Admins; non-members get 404 | Admins must be able to reach every project; others shouldn't learn a project exists |

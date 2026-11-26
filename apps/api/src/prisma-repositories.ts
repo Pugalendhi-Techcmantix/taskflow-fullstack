@@ -1,6 +1,7 @@
 import type { PrismaClient } from '../generated/client';
 import { createPrismaInviteRepository, createPrismaRoleRepository } from './modules/access/prisma-access.repository';
 import { createPrismaRefreshTokenRepository, createPrismaUserRepository } from './modules/auth/prisma-auth.repository';
+import { createPrismaProjectRepository } from './modules/projects/prisma-projects.repository';
 import type { Repositories } from './repositories';
 
 export function createPrismaRepositories(prisma: PrismaClient): Repositories {
@@ -9,5 +10,6 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
     refreshTokens: createPrismaRefreshTokenRepository(prisma),
     roles: createPrismaRoleRepository(prisma),
     invites: createPrismaInviteRepository(prisma),
+    projects: createPrismaProjectRepository(prisma),
   };
 }

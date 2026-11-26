@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router';
 import type { PublicUser } from '@taskflow/core';
 import { signOut, useSession } from '../features/auth/session';
+import { ProjectSwitcher } from '../features/projects/ProjectSwitcher';
 import { Icon } from './icons';
 import { NAV_ITEMS } from './nav';
 import { toggleTheme } from './theme';
@@ -22,6 +23,7 @@ export function AppShell() {
       <a className="skip-link" href="#main">Skip to content</a>
       <aside className={`sidebar ${navOpen ? 'open' : ''}`} aria-label="Sidebar">
         <div className="brand"><div className="logo" aria-hidden="true">TF</div>TaskFlow</div>
+        <ProjectSwitcher onNavigate={closeNav} />
         <nav aria-label="Main">
           {NAV_ITEMS.filter((n) => n.section === 'main').map((n) => <SideLink key={n.path} item={n} onNavigate={closeNav} />)}
           <div className="nav-sec">Workspace</div>

@@ -5,13 +5,18 @@ import helmet from 'helmet';
 import { errorHandler, notFound } from './http/errors';
 import { createAccessRouter } from './modules/access/access.routes';
 import type { AccessService } from './modules/access/access.service';
+import { createActorLookup, createPermissionGuard, type Guards } from './modules/access/actor';
 import { createAuthRouter } from './modules/auth/auth.routes';
 import type { AuthService } from './modules/auth/auth.service';
+import { createRequireAuth } from './modules/auth/require-auth';
+import { createProjectsRouter } from './modules/projects/projects.routes';
+import type { ProjectsService } from './modules/projects/projects.service';
 
 /** Everything the HTTP layer needs. server.ts wires real Prisma services; tests wire in-memory ones. */
 export type AppDeps = {
   auth: AuthService;
   access: AccessService;
+  projects: ProjectsService;
   /** Resolves when the database answers; rejects otherwise. */
   checkDatabase: () => Promise<void>;
   corsOrigins: string[];
@@ -36,8 +41,16 @@ export function createApp(deps: AppDeps) {
     }
   });
 
+  const actorOf = createActorLookup(deps.access);
+  const guards: Guards = {
+    signedIn: createRequireAuth(deps.auth.verifyAccessToken),
+    requirePermission: createPermissionGuard(actorOf),
+    actorOf,
+  };
+
   app.use('/api/auth', createAuthRouter(deps.auth, deps.access, { secureCookies: deps.secureCookies, rateLimit: deps.rateLimit }));
-  app.use('/api', createAccessRouter(deps.access, deps.auth.verifyAccessToken));
+  app.use('/api/projects', createProjectsRouter(deps.projects, guards));
+  app.use('/api', createAccessRouter(deps.access, guards));
 
   app.use(notFound);
   app.use(errorHandler);
