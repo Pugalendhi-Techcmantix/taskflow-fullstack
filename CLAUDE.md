@@ -63,7 +63,7 @@ Before doing anything else:
 ## Frontend rules (rubric: State, Network, Components)
 
 - **Real data only:** every screen shows data from the API, which reads PostgreSQL. Never hard-code mock or demo data in the web app; the prototype's fake data is only a visual reference. (In-memory dummy data is allowed only inside automated tests.)
-- Match `docs/taskflow-prototype.html` for layout, colours and wording.
+- Match `docs/taskflow-prototype.html` for layout, colours and wording. **Before saying a module is done, compare every screen it touches with the prototype side by side** (serve `docs/` with `python -m http.server 8765`, screenshot both at 1440 px), fix differences, and add anything that belongs to a later module to the "Prototype parity" table in PLAN.md.
 - **Minimal `useEffect`**: derive values during render, put user actions in event handlers, and use `useSyncExternalStore` for browser subscriptions.
 - Server data goes through TanStack Query. Mutations are **optimistic with rollback** and a clear error message.
 - Filters, sorting, paging and tabs live in the **URL** (`useUrlState<T>`).

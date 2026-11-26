@@ -13,6 +13,7 @@ export type ProjectRecord = {
   updatedAt: Date;
   /** Oldest first. */
   members: ProjectMemberRecord[];
+  activeSprint: { id: string; name: string } | null;
 };
 
 export type NewProject = { key: string; name: string; description: string; color: ProjectColor; createdById: string };

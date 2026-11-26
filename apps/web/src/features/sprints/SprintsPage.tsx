@@ -112,16 +112,16 @@ export function SprintsPage() {
               <div className="sprint-head">
                 <h3>{s.name}</h3>
                 <span className={`badge chip-${s.status}`}>{SPRINT_STATUS_LABELS[s.status]}</span>
-                <span className="muted small nowrap"><Icon name="clock" size={13} /> {formatRange(s.startDate, s.endDate)} · {plural(inclusiveDays(s.startDate, s.endDate), 'day')}</span>
+                <span className="muted small nowrap"><Icon name="cal" size={13} /> {formatRange(s.startDate, s.endDate)} · {plural(inclusiveDays(s.startDate, s.endDate), 'day')}</span>
                 <span className={`small nowrap ${s.status === 'active' && daysBetween(today, s.endDate) < 0 ? 'overdue' : 'muted'}`}>{timing(s, today)}</span>
                 {manage && (
                   <span className="sprint-actions">
                     {s.status === 'planned' && (
-                      <button className="btn sm primary" disabled={Boolean(active) || transition.isPending}
+                      <button className="btn sm" disabled={Boolean(active) || transition.isPending}
                         title={active ? `Complete ${active.name} first — only one sprint can be active` : undefined}
                         onClick={() => transition.mutate({ sprint: s, to: 'active' })}>Start sprint</button>
                     )}
-                    {s.status === 'active' && <button className="btn sm primary" onClick={() => setDialog({ kind: 'complete', sprint: s })}>Complete sprint</button>}
+                    {s.status === 'active' && <button className="btn sm" onClick={() => setDialog({ kind: 'complete', sprint: s })}>Complete sprint</button>}
                     {s.status !== 'completed' && <button className="btn sm" onClick={() => setDialog({ kind: 'edit', sprint: s })} aria-label={`Edit ${s.name}`}>Edit</button>}
                     {s.status === 'planned' && <button className="btn sm danger" onClick={() => setDialog({ kind: 'delete', sprint: s })} aria-label={`Delete ${s.name}`}>Delete</button>}
                   </span>

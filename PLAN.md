@@ -72,13 +72,30 @@ A module is **done** only when all of these are true:
 - [ ] Database tables migrated (Prisma migration committed)
 - [ ] API endpoints validated with Zod, with permissions enforced on the server
 - [ ] API tests pass, covering the happy path, invalid input, unauthorised access and edge cases
-- [ ] Screens match the prototype and have **loading, empty, error and success** states
+- [ ] Screens have **loading, empty, error and success** states
+- [ ] **Side-by-side check with the prototype:** open `docs/taskflow-prototype.html` (serve it with `python -m http.server` in `docs/`) and the real app at 1440 px, compare every screen the module touches, fix differences, and list anything deliberately left for a later module in the **Prototype parity** table below
 - [ ] Works with the keyboard and has accessible labels
 - [ ] `npm run typecheck` and `npm test` are green
 - [ ] Claude has checked it in a real browser at **375 / 768 / 1440 px**
 - [ ] **The user has tested and approved it**, then it is committed to Git
 
 The next module starts only after the user approves the current one.
+
+### Prototype parity — items the prototype shows that land in a later module
+
+Checked side by side on 2026-11-26 (Projects, Sprints, Team & roles, Sign in). Tick these off as they are built.
+
+| Prototype element | Where it appears | Built in |
+|---|---|---|
+| **+ New task** button in the top bar | Every page | Module 5 |
+| Project card progress bar ("8 of 25 tasks done") | Projects | Module 5 |
+| Sprint card progress, "x of y tasks done · points", task list, "+ N more · see all" | Sprints | Module 5 |
+| **Backlog** card with "Move to sprint…" | Sprints | Module 5 |
+| **Open tasks** column | Team & roles | Module 5 |
+| **Open board** button on the active sprint | Sprints | Module 6 |
+| Global search bar ("press /") and keyboard-shortcut help (`?`, `C`, `G` then a letter) | Top bar | Module 7 |
+| Notification bell with unread count | Top bar | Module 9 |
+| Dashboard (stats, burndown, workload, my tasks, recent activity) | Dashboard | Module 10 |
 
 ---
 

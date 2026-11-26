@@ -2,7 +2,7 @@ import { useActionState, useId, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useOutletContext, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fieldErrors, projectColorSchema, roleSummaryOf, updateProjectInput, type Project, type PublicUser } from '@taskflow/core';
-import { initials } from '../../app/AppShell';
+import { Avatar } from '../../app/Avatar';
 import { LoadError, SkeletonRows, errorMessage } from '../../app/feedback';
 import { formText } from '../../app/forms';
 import { toast } from '../../app/toast';
@@ -45,7 +45,7 @@ export function ProjectLayout() {
       <nav className="crumbs" aria-label="Breadcrumb"><Link to="/projects">Projects</Link> <span aria-hidden="true">/</span> <span>{p.key}</span></nav>
       <div className="page-head">
         <div className="proj-top">
-          <span className="proj-key lg" style={{ background: p.color }} aria-hidden="true">{p.key}</span>
+          <span className={`proj-key lg ${p.key.length > 3 ? 'long' : ''}`} style={{ background: p.color }} aria-hidden="true">{p.key}</span>
           <div>
             <h1>{p.name}</h1>
             <p className="sub">{p.description || 'No description yet.'}</p>
@@ -163,7 +163,7 @@ function MembersCard({ project: p, canManage }: { project: Project; canManage: b
       <ul className="member-list">
         {p.members.map((m) => (
           <li key={m.id}>
-            <span className="avatar sm" aria-hidden="true">{initials(m.name)}</span>
+            <Avatar id={m.id} name={m.name} size="sm" />
             <span className="grow"><b>{m.name}</b>{m.id === meId && <span className="pill">You</span>}<span className="muted small block">{m.email} · {m.role.name}</span></span>
             {canManage && (
               <button className="btn sm danger" onClick={() => remove.mutate(m.id)} aria-label={`Remove ${m.name} from ${p.key}`}>

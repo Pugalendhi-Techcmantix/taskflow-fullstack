@@ -94,6 +94,16 @@ describe('lifecycle', () => {
     expect(done.completedAt).not.toBeNull();
   });
 
+  it('the project reports its active sprint (shown on project cards)', async () => {
+    const { pm } = await setup();
+    const s = await create(pm.auth);
+    expect((await api().get('/api/projects/TF').set(pm.auth)).body.project.activeSprint).toBeNull();
+    await api().post(`/api/projects/TF/sprints/${s.id}/start`).set(pm.auth);
+    expect((await api().get('/api/projects').set(pm.auth)).body.projects[0].activeSprint).toEqual({ id: s.id, name: 'Sprint 1' });
+    await api().post(`/api/projects/TF/sprints/${s.id}/complete`).set(pm.auth);
+    expect((await api().get('/api/projects/TF').set(pm.auth)).body.project.activeSprint).toBeNull();
+  });
+
   it('refuses a second active sprint in the same project', async () => {
     const { pm } = await setup();
     const a = await create(pm.auth, sprint1);

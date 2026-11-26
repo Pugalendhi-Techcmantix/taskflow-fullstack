@@ -1,24 +1,26 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import type { Project } from '@taskflow/core';
-import { initials } from '../../app/AppShell';
+import { Avatar } from '../../app/Avatar';
 import { LoadError, SkeletonRows } from '../../app/feedback';
 import { Icon } from '../../app/icons';
+import { plural } from '../../lib/dates';
 import { useCan } from '../auth/session';
 import { NewProjectDialog } from './NewProjectDialog';
-import { rememberProject, useProjects } from './projects-api';
+import { lastProject, rememberProject, useProjects } from './projects-api';
 
 export function ProjectsPage() {
   const can = useCan();
   const projects = useProjects();
   const [creating, setCreating] = useState(false);
+  const current = lastProject();
 
   return (
     <>
       <div className="page-head">
         <div>
           <h1>Projects</h1>
-          <p className="sub">{projects.status === 'success' ? `${projects.data.projects.length} ${projects.data.projects.length === 1 ? 'project' : 'projects'} you can see` : 'Your projects'}</p>
+          <p className="sub">{projects.status === 'success' ? `${plural(projects.data.projects.length, 'project')} you can see` : 'Your projects'}</p>
         </div>
         {can('project:create') && <button className="btn primary" onClick={() => setCreating(true)}>+ New project</button>}
       </div>
@@ -41,7 +43,7 @@ export function ProjectsPage() {
       )}
       {projects.status === 'success' && projects.data.projects.length > 0 && (
         <ul className="proj-grid">
-          {projects.data.projects.map((p) => <ProjectCard key={p.id} project={p} />)}
+          {projects.data.projects.map((p) => <ProjectCard key={p.id} project={p} isCurrent={p.key === current} />)}
         </ul>
       )}
 
@@ -50,22 +52,27 @@ export function ProjectsPage() {
   );
 }
 
-function ProjectCard({ project: p }: { project: Project }) {
+/** Card layout from the prototype: key badge, name, active sprint, "Current" chip, description, members. */
+function ProjectCard({ project: p, isCurrent }: { project: Project; isCurrent: boolean }) {
   return (
     <li className="card proj">
       <Link to={`/projects/${p.key}`} className="proj-link" onClick={() => rememberProject(p.key)}>
         <div className="proj-top">
-          <span className="proj-key" style={{ background: p.color }} aria-hidden="true">{p.key}</span>
+          <span className={`proj-key ${p.key.length > 3 ? 'long' : ''}`} style={{ background: p.color }} aria-hidden="true">{p.key}</span>
           <div className="proj-title">
             <h2>{p.name}</h2>
-            <span className="muted small">{p.key} · {p.members.length} {p.members.length === 1 ? 'member' : 'members'}</span>
+            <span className="muted small">{p.activeSprint ? `${p.activeSprint.name} active` : 'No active sprint'}</span>
           </div>
+          {isCurrent && <span className="badge chip-active">Current</span>}
           {!p.isMember && <span className="pill" title="You can see this project because you are an Admin">Not a member</span>}
         </div>
         <p className="muted proj-desc">{p.description || 'No description yet.'}</p>
-        <div className="stack" aria-label={`Members: ${p.members.map((m) => m.name).join(', ')}`}>
-          {p.members.slice(0, 5).map((m) => <span key={m.id} className="avatar sm" title={m.name}>{initials(m.name)}</span>)}
-          {p.members.length > 5 && <span className="avatar sm more">+{p.members.length - 5}</span>}
+        <div className="proj-foot">
+          <span className="muted small">{p.key} · {plural(p.members.length, 'member')}</span>
+          <span className="stack" aria-label={`Members: ${p.members.map((m) => m.name).join(', ')}`}>
+            {p.members.slice(0, 5).map((m) => <Avatar key={m.id} id={m.id} name={m.name} size="sm" title={m.name} />)}
+            {p.members.length > 5 && <span className="avatar sm more">+{p.members.length - 5}</span>}
+          </span>
         </div>
       </Link>
     </li>

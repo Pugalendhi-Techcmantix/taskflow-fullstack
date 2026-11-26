@@ -51,6 +51,8 @@ export const project = z.object({
   members: z.array(projectMember),
   /** Is the signed-in user a member? (Admins can see projects they are not a member of.) */
   isMember: z.boolean(),
+  /** The sprint currently running in this project, if any. */
+  activeSprint: z.object({ id: z.string(), name: z.string() }).nullable(),
   createdAt: z.string(),
 });
 export type Project = z.infer<typeof project>;

@@ -273,3 +273,25 @@ input[type='date'].input { min-height: 38px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* prototype parity: coloured avatars, project card footer, collapsible sidebar */
+.avatar { color: #fff; }
+.proj-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.proj-top .badge, .proj-top .pill { flex: none; }
+.collapse-btn { margin-top: auto; width: 100%; }
+.collapse-btn svg { transition: transform .2s; }
+@media (min-width: 861px) {
+  .shell.collapsed .sidebar { width: 68px; padding: 18px 10px; }
+  .shell.collapsed .sidebar .nl,
+  .shell.collapsed .proj-switch,
+  .shell.collapsed .nav-sec,
+  .shell.collapsed .brand-name { display: none; }
+  .shell.collapsed .nav-item { justify-content: center; padding: 10px; }
+  .shell.collapsed .brand { justify-content: center; }
+  .shell.collapsed .collapse-btn svg { transform: rotate(180deg); }
+}
+@media (max-width: 860px) { .collapse-btn { display: none; } }
+/* 4–5 letter keys (e.g. DQMS) still fit the square badge */
+.proj-key.long { font-size: 9.5px; letter-spacing: 0; }
+.proj-key.lg.long { font-size: 11px; }
+.proj-key.sm.long { font-size: 7.5px; }

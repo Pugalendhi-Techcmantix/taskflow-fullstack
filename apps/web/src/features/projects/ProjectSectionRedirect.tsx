@@ -33,7 +33,7 @@ export function ProjectSectionRedirect({ section }: { section: Section }) {
           {list.map((p) => (
             <li key={p.id}>
               <Link to={`/projects/${p.key}/${section}`} onClick={() => rememberProject(p.key)}>
-                <span className="proj-key sm" style={{ background: p.color }} aria-hidden="true">{p.key}</span>
+                <span className={`proj-key sm ${p.key.length > 3 ? 'long' : ''}`} style={{ background: p.color }} aria-hidden="true">{p.key}</span>
                 <b>{p.name}</b>
                 <span className="muted small">{p.key}</span>
               </Link>

@@ -33,7 +33,7 @@ export function ProjectSwitcher({ onNavigate }: { onNavigate: () => void }) {
         }}
       >
         {!current && <option value="">Choose a project…</option>}
-        {projects.data.projects.map((p) => <option key={p.id} value={p.key}>{p.name} ({p.key})</option>)}
+        {projects.data.projects.map((p) => <option key={p.id} value={p.key}>{p.name}</option>)}
       </select>
     </div>
   );

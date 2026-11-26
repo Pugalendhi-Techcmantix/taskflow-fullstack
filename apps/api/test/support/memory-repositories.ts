@@ -139,7 +139,7 @@ export function createMemoryRepositories(now: () => Date) {
 
   /* ---------- projects ---------- */
 
-  type StoredProject = Omit<ProjectRecord, 'members'> & { members: { userId: string; addedAt: Date }[] };
+  type StoredProject = Omit<ProjectRecord, 'members' | 'activeSprint'> & { members: { userId: string; addedAt: Date }[] };
   const projects: StoredProject[] = [];
   const toRecord = (p: StoredProject): ProjectRecord => ({
     ...p,
@@ -147,6 +147,10 @@ export function createMemoryRepositories(now: () => Date) {
       const u = users.find((x) => x.id === m.userId);
       return u ? [{ userId: u.id, name: u.name, email: u.email, roleId: u.roleId, addedAt: m.addedAt }] : [];
     }),
+    activeSprint: (() => {
+      const s = sprints.find((x) => x.projectId === p.id && x.status === 'active');
+      return s ? { id: s.id, name: s.name } : null;
+    })(),
   });
 
   const projectRepo: ProjectRepository = {

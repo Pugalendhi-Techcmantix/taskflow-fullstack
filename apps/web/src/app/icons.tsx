@@ -11,6 +11,8 @@ const PATHS = {
   moon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />,
   logout: <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />,
   check: <path d="M20 6 9 17l-5-5" />,
+  cal: <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>,
+  chev: <path d="m15 18-6-6 6-6" />,
 } as const;
 
 export type IconName = keyof typeof PATHS;

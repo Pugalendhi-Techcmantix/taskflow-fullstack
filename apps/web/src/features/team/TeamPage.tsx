@@ -17,7 +17,7 @@ import {
 } from '@taskflow/core';
 import { LoadError, SkeletonRows, errorMessage } from '../../app/feedback';
 import { Field, SelectField, formText } from '../../app/forms';
-import { initials } from '../../app/AppShell';
+import { Avatar } from '../../app/Avatar';
 import { toast } from '../../app/toast';
 import { ApiError } from '../../lib/http';
 import { reloadSessionUser, useCan, useSession } from '../auth/session';
@@ -122,7 +122,7 @@ function MembersCard({ meId, canManage }: { meId: string; canManage: boolean }) 
                   <tr key={m.id}>
                     <td>
                       <span className="who">
-                        <span className="avatar sm" aria-hidden="true">{initials(m.name)}</span>
+                        <Avatar id={m.id} name={m.name} size="sm" />
                         <b>{m.name}</b>
                         {isMe && <span className="pill">You</span>}
                       </span>
