@@ -119,6 +119,7 @@ Order follows dependencies: each module builds on the ones before it.
 | **API** | `POST /api/auth/register`, `/login`, `/refresh`, `/logout`, `GET /api/auth/me` |
 | **Screens** | Sign in / Create account (prototype auth page), app shell with sidebar, topbar and user menu |
 | **Done when** | A user can register, log in, refresh the page and stay logged in, and log out. A stolen refresh token cannot be reused. |
+| **Status** | ✅ Approved 2026-11-26 |
 
 ### Module 2 — Roles & Permissions
 | | |
@@ -128,6 +129,7 @@ Order follows dependencies: each module builds on the ones before it.
 | **Email** | SMTP via nodemailer when `SMTP_*` is set in `.env`. Otherwise (development only) the API terminal prints the email, including the invite link. Production refuses to start without SMTP. |
 | **Tables** | `roles`, `permissions`, `role_permissions`, `invites`, plus `users.role_id`. Default roles and permissions are inserted by the migration. |
 | **Done when** | A Viewer cannot change anything, even by calling the API directly. Toggling a permission takes effect on the next request. An invited person can join from the link. |
+| **Status** | ✅ Approved 2026-11-26 |
 
 ### Module 3 — Project Management
 | | |
@@ -138,6 +140,7 @@ Order follows dependencies: each module builds on the ones before it.
 | **URLs** | `/projects` (grid), `/projects/:key` (overview, members, settings). Later modules add `/projects/:key/board`, `/sprints` and `/tasks`. |
 | **Tables** | `projects`, `project_members` (+ database CHECK constraints on key and colour format) |
 | **Done when** | Projects CRUD works, a duplicate key is rejected, and a user only sees projects they are a member of (Admins see all). |
+| **Status** | ✅ Approved 2026-11-26 |
 
 ### Module 4 — Sprint Management
 | | |
@@ -149,6 +152,7 @@ Order follows dependencies: each module builds on the ones before it.
 | **URLs** | `/projects/:key/sprints`; `/sprints` redirects to the last project's sprints |
 | **Tables** | `sprints` (+ CHECK constraints on status, dates and name; at most one active sprint per project) |
 | **Done when** | The full sprint lifecycle works, and starting a second active sprint is refused. |
+| **Status** | ✅ Approved 2026-11-26 |
 
 ### Module 5 — Task & Issue Management
 | | |
@@ -161,18 +165,21 @@ Order follows dependencies: each module builds on the ones before it.
 | **URLs** | `/projects/:key/tasks` (table); `?task=TF-107` opens that task's dialog (shareable); `/tasks` opens the last project's tasks |
 | **Tables** | `tasks` (+ `projects.next_task_number`), `subtasks`, `comments` |
 | **Done when** | Every field is editable with optimistic save and rollback, keys never repeat, and the permissions from Module 2 apply. |
+| **Status** | ✅ Approved 2026-11-26 |
 
 ### Module 6 — Kanban Board (Drag & Drop)
 | | |
 |---|---|
 | **Features** | 4 columns, drag-and-drop with dnd-kit, a saved card order (fractional `position` so a move updates one row), **optimistic update with rollback**, **keyboard moves** (arrows + Shift+←/→), board filters, read-only board for Viewers |
 | **Done when** | Moves feel instant, a failed save puts the card back with a message, and the board is fully usable without a mouse. |
+| **Status** | ⬜ Not started |
 
 ### Module 7 — Search, Filters & Pagination
 | | |
 |---|---|
 | **Features** | A type-safe `useUrlState<T>` hook with **all filters, sorting and paging in the URL**; filtering, sorting and pagination done on the server; global search (tasks + projects) with debounce and request cancellation; Copy link button |
 | **Done when** | Refreshing or opening a shared link shows the exact same view, and only one page of rows is ever loaded. |
+| **Status** | ⬜ Not started |
 
 ### Module 8 — Activity History
 | | |
@@ -180,6 +187,7 @@ Order follows dependencies: each module builds on the ones before it.
 | **Features** | Every change writes an activity entry (one place, from the service layer); workspace timeline grouped by day; filters by person and event type (in the URL); task history inside the task dialog |
 | **Tables** | `activity_logs` |
 | **Done when** | Every action from Modules 2–6 appears in the history with who, what and when. |
+| **Status** | ⬜ Not started |
 
 ### Module 9 — Real-Time Notifications
 | | |
@@ -187,18 +195,21 @@ Order follows dependencies: each module builds on the ones before it.
 | **Features** | Socket.IO with JWT handshake; one room per project; live board updates for other users; notifications for assignment, mention and status change; bell with unread count; mark one or all as read; reconnect handling |
 | **Tables** | `notifications` |
 | **Done when** | Two browsers see each other's changes live, and a mention reaches the mentioned user. |
+| **Status** | ⬜ Not started |
 
 ### Module 10 — Dashboard & Analytics
 | | |
 |---|---|
 | **Features** | Summary numbers (open, in progress, done, overdue), sprint burndown chart, tasks by status, open tasks per person, my open tasks, recent activity |
 | **Done when** | All numbers come from real data and match the Tasks page. |
+| **Status** | ⬜ Not started |
 
 ### Module 11 — Finishing (quality & delivery)
 | | |
 |---|---|
 | **Features** | Playwright end-to-end tests of the main flows; performance (profiler, virtualise long lists, bundle size); accessibility pass; security review (headers, rate limits, permission audit); dark mode; deployment; README; rubric self-review |
 | **Done when** | All 5 rubric areas are at Level 3 or higher, and the app is deployed and demo-ready. |
+| **Status** | ⬜ Not started |
 | **Open question** | Deployment target: where will the client host it? |
 
 ---
