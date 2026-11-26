@@ -1,0 +1,31 @@
+{
+  "name": "taskflow",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "db:migrate": "npm run db:migrate -w @taskflow/api",
+    "db:studio": "npm run db:studio -w @taskflow/api",
+    "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev -w @taskflow/api\" \"npm run dev -w @taskflow/web\"",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.10",
+    "concurrently": "^10.0.7",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "prisma@7.10.1": true,
+    "@prisma/engines@7.10.1": true
+  }
+}
