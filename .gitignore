@@ -1,10 +1,25 @@
+# dependencies and build output
 node_modules/
 dist/
 coverage/
+*.tsbuildinfo
+.vite/
+
+# Prisma client is generated from schema.prisma (run: npm run db:generate)
 generated/
+
+# secrets: real values live only in .env (never commit); .env.example documents the keys
 .env
 .env.*
 !.env.example
+
+# logs and tool output
 *.log
 .playwright-mcp/
+
+# editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
 .DS_Store
+Thumbs.db
