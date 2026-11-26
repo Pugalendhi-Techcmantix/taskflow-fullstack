@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { permissionKeySchema, roleSummary } from './access';
 
 /** bcrypt only uses the first 72 bytes of a password, so longer ones are rejected instead of silently truncated. */
 const MAX_PASSWORD_BYTES = 72;
@@ -43,12 +44,19 @@ export const publicUser = z.object({
   id: z.string(),
   name: z.string(),
   email: z.string(),
+  role: roleSummary,
   createdAt: z.string(),
 });
 export type PublicUser = z.infer<typeof publicUser>;
 
-export const authResponse = z.object({
-  accessToken: z.string().min(1),
+/** The signed-in user plus what their role may do (drives `can()` in the UI). */
+export const sessionUser = z.object({
   user: publicUser,
+  permissions: z.array(permissionKeySchema),
+});
+export type SessionUser = z.infer<typeof sessionUser>;
+
+export const authResponse = sessionUser.extend({
+  accessToken: z.string().min(1),
 });
 export type AuthResponse = z.infer<typeof authResponse>;

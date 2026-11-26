@@ -17,6 +17,7 @@ export const ERROR_CODES = {
   notFound: 'NOT_FOUND',
   conflict: 'CONFLICT',
   rateLimited: 'RATE_LIMITED',
+  emailFailed: 'EMAIL_FAILED',
   internal: 'INTERNAL_ERROR',
 } as const;
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

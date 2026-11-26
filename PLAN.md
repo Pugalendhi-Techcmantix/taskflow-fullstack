@@ -105,10 +105,11 @@ Order follows dependencies: each module builds on the ones before it.
 ### Module 2 — Roles & Permissions
 | | |
 |---|---|
-| **Features** | 4 roles (Admin, Project Manager, Developer, Viewer); 11 permissions (as in the prototype); an editable permission matrix (Admin only); a member list with role change; invite member; a `can()` helper in the UI; a permission check on **every** API route |
-| **Tables** | `roles`, `permissions`, `role_permissions`, plus a `role_id` column on `users`; seed script |
-| **Done when** | A Viewer cannot change anything, even by calling the API directly. Toggling a permission takes effect at once. |
-| **Open question** | Invites: real email, or a copyable invite link for v1? (Recommended: invite link.) |
+| **Features** | 4 workspace roles (Admin, Project Manager, Developer, Viewer); 11 permissions (as in the prototype); an editable permission matrix (needs `role:manage`; the Admin column is locked to "all"); a member list with role change (needs `user:manage`; you can't change your own role; the last Admin can't be demoted); **email invites** with resend and cancel; an invite-accept page; a `can()` helper in the UI; a permission check on **every** API route |
+| **Sign-up rule** | The first account ever becomes **Admin**. Later public sign-ups become **Viewer** until promoted. Invited people get the role chosen in the invite. |
+| **Email** | SMTP via nodemailer when `SMTP_*` is set in `.env`. Otherwise (development only) the API terminal prints the email, including the invite link. Production refuses to start without SMTP. |
+| **Tables** | `roles`, `permissions`, `role_permissions`, `invites`, plus `users.role_id`. Default roles and permissions are inserted by the migration. |
+| **Done when** | A Viewer cannot change anything, even by calling the API directly. Toggling a permission takes effect on the next request. An invited person can join from the link. |
 
 ### Module 3 — Project Management
 | | |
@@ -178,8 +179,8 @@ Order follows dependencies: each module builds on the ones before it.
 |---|---|---|
 | 0 | Project setup | ✅ Approved 2026-11-26 |
 | 1 | Authentication & Users | ✅ Approved 2026-11-26 |
-| 2 | Roles & Permissions | ⏳ Planning |
-| 3 | Projects | ⬜ Not started |
+| 2 | Roles & Permissions | ✅ Approved 2026-11-26 |
+| 3 | Projects | ⏳ In progress |
 | 4 | Sprints | ⬜ Not started |
 | 5 | Tasks & Issues | ⬜ Not started |
 | 6 | Kanban Board | ⬜ Not started |
@@ -204,3 +205,7 @@ Legend: ⬜ not started · ⏳ in progress · 🧪 waiting for user test · ✅ 
 | 2026-11-26 | Ports 4100 (API) and 5200 (web); Postgres on 5433 | 4000 and 5173 are taken by another local project; the Postgres installer chose 5433 |
 | 2026-11-26 | `node --watch --import tsx` instead of `tsx watch` | `tsx watch` hung on startup on this Windows machine |
 | 2026-11-26 | The "two tabs refresh at once" grace window only applies while the login still has a live token | Tests caught that the grace window briefly re-opened logged-out or stolen sessions |
+| 2026-11-26 | Invites by real email (SMTP / nodemailer); print to the console until SMTP is configured | User's choice; the email provider is decided later |
+| 2026-11-26 | SMTP = Gmail (smtp.gmail.com:587, STARTTLS, App password) in `apps/api/.env`; the API verifies the login at startup | User provided a Gmail account. Credentials live only in the git-ignored `.env`. |
+| 2026-11-26 | First account = Admin, later public sign-ups = Viewer | User's choice; safest default |
+| 2026-11-26 | Roles are fixed (4) with text ids (`admin`, `project_manager`, `developer`, `viewer`); their permissions are editable | Matches the prototype; there's no need for custom roles in v1 |

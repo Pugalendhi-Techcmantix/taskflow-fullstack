@@ -1,9 +1,10 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import type { LoginInput, PublicUser, RegisterInput } from '@taskflow/core';
+import { roleSummaryOf, type LoginInput, type PublicUser, type RegisterInput } from '@taskflow/core';
 import { conflict, unauthorized } from '../../http/errors';
-import { EmailTakenError, type AuthRepositories, type UserRecord } from './auth.repository';
+import type { Repositories } from '../../repositories';
+import { EmailTakenError, type UserRecord } from './auth.repository';
 
 export type AuthConfig = {
   jwtSecret: string;
@@ -25,6 +26,7 @@ export const toPublicUser = (u: UserRecord): PublicUser => ({
   id: u.id,
   name: u.name,
   email: u.email,
+  role: roleSummaryOf(u.roleId),
   createdAt: u.createdAt.toISOString(),
 });
 
@@ -32,17 +34,23 @@ const hashToken = (token: string) => createHash('sha256').update(token).digest('
 
 export type AuthService = ReturnType<typeof createAuthService>;
 
-export function createAuthService(repos: AuthRepositories, config: AuthConfig, now: () => Date = () => new Date()) {
+export function createAuthService(repos: Pick<Repositories, 'users' | 'refreshTokens'>, config: AuthConfig, now: () => Date = () => new Date()) {
   const { users, refreshTokens } = repos;
   /** Compared against when the email does not exist, so a wrong email takes as long as a wrong password. */
   const dummyHash = bcrypt.hashSync('timing-equaliser-not-a-real-password', config.bcryptRounds);
 
   /* ---------- users ---------- */
 
+  const hashPassword = (password: string) => bcrypt.hash(password, config.bcryptRounds);
+
+  /** Public sign-up: the very first account becomes Admin, everyone after starts as Viewer. */
   async function register(input: RegisterInput): Promise<UserRecord> {
-    const passwordHash = await bcrypt.hash(input.password, config.bcryptRounds);
+    const passwordHash = await hashPassword(input.password);
     try {
-      return await users.create({ name: input.name, email: input.email, passwordHash });
+      return await users.create(
+        { name: input.name, email: input.email, passwordHash },
+        { kind: 'firstUserIsAdmin', others: 'viewer' },
+      );
     } catch (err) {
       if (err instanceof EmailTakenError) {
         throw conflict('An account with this email already exists', { email: 'An account with this email already exists' });
@@ -144,6 +152,7 @@ export function createAuthService(repos: AuthRepositories, config: AuthConfig, n
 
   return {
     refreshTokenTtlDays: config.refreshTokenTtlDays,
+    hashPassword,
     register,
     login,
     getUser,

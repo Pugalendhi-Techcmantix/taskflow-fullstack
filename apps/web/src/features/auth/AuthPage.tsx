@@ -1,6 +1,7 @@
-import { useActionState, useId } from 'react';
+import { useActionState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router';
 import { fieldErrors, loginInput, registerInput } from '@taskflow/core';
+import { Field, formText as text } from '../../app/forms';
 import { ApiError } from '../../lib/http';
 import { signIn, signUp, useSession } from './session';
 
@@ -9,8 +10,6 @@ type Mode = 'login' | 'register';
 type FormState =
   | { status: 'idle' }
   | { status: 'error'; message: string; fields: Record<string, string>; values: { name: string; email: string } };
-
-const text = (v: FormDataEntryValue | null) => (typeof v === 'string' ? v : '');
 
 /** Only same-site paths are allowed as a "return to" target (blocks open redirects like //evil.com). */
 export function safeReturnPath(value: unknown): string {
@@ -102,37 +101,6 @@ export function AuthPage({ mode }: { mode: Mode }) {
         <p>Projects, sprints, a Kanban board and real-time updates for your whole team.</p>
         <ul className="mod-list">{MODULES.map((m) => <li key={m}>{m}</li>)}</ul>
       </aside>
-    </div>
-  );
-}
-
-type FieldProps = {
-  name: string;
-  label: string;
-  type?: 'text' | 'email' | 'password';
-  autoComplete: string;
-  defaultValue?: string;
-  error: string | undefined;
-  hint?: string;
-};
-
-function Field({ name, label, type = 'text', autoComplete, defaultValue, error, hint }: FieldProps) {
-  const id = useId();
-  const describedBy = error ? `${id}-err` : hint ? `${id}-hint` : undefined;
-  return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <input
-        id={id}
-        className="input"
-        name={name}
-        type={type}
-        autoComplete={autoComplete}
-        defaultValue={defaultValue}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy}
-      />
-      {error ? <div className="err" id={`${id}-err`}>{error}</div> : hint ? <div className="field-hint" id={`${id}-hint`}>{hint}</div> : null}
     </div>
   );
 }

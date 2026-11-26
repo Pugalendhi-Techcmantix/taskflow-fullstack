@@ -13,6 +13,8 @@
     "db:migrate": "npm run db:migrate -w @taskflow/api",
     "db:studio": "npm run db:studio -w @taskflow/api",
     "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev -w @taskflow/api\" \"npm run dev -w @taskflow/web\"",
+    "dev:api": "npm run dev -w @taskflow/api",
+    "dev:web": "npm run dev -w @taskflow/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present"

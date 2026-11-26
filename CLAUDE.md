@@ -29,6 +29,7 @@ Before doing anything else:
   - One database: `taskflow`. The connection string is in `apps/api/.env` (git-ignored). Never print or commit it.
   - **No test database.** Tests use in-memory repositories with dummy data (`apps/api/test/support`).
 - Ports: API **4100**, web **5200**. Ports 4000 and 5173 belong to another project; never stop its containers.
+- **The user runs `npm run dev` in their own VS Code terminal** so they can see the API logs. Don't leave dev servers running in a hidden background shell. If one is needed for browser checks, start it, check, then stop it and free ports 4100 and 5200. If the user's own server is already running on those ports, use it instead.
 - Prisma is pinned to **7.10.1**. Do not upgrade to Prisma 8 (still a release candidate) unless the user asks.
 
 ## Commands (run from `taskflow/`)

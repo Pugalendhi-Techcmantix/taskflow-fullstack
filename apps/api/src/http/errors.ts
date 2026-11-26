@@ -19,6 +19,11 @@ export class AppError extends Error {
 export const unauthorized = (message = 'Please sign in again') =>
   new AppError(401, ERROR_CODES.unauthorized, message);
 
+export const forbidden = (message = "You don't have permission to do that") =>
+  new AppError(403, ERROR_CODES.forbidden, message);
+
+export const notFoundError = (message: string) => new AppError(404, ERROR_CODES.notFound, message);
+
 export const conflict = (message: string, fields?: Record<string, string>) =>
   new AppError(409, ERROR_CODES.conflict, message, fields);
 

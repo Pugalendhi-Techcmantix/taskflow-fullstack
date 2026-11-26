@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import { AppShell } from './app/AppShell';
 import { ComingSoonPage, HomePage, NotFoundPage, RouteErrorPage } from './app/pages';
@@ -8,11 +8,10 @@ import { NAV_ITEMS } from './app/nav';
 import { AuthPage } from './features/auth/AuthPage';
 import { RequireAuth } from './features/auth/RequireAuth';
 import { restoreSession } from './features/auth/session';
+import { AcceptInvitePage } from './features/team/AcceptInvitePage';
+import { TeamPage } from './features/team/TeamPage';
+import { queryClient } from './lib/query';
 import './styles/global.css';
-
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } },
-});
 
 const router = createBrowserRouter([
   {
@@ -20,6 +19,7 @@ const router = createBrowserRouter([
     children: [
       { path: '/login', element: <AuthPage mode="login" /> },
       { path: '/register', element: <AuthPage mode="register" /> },
+      { path: '/invite/:token', element: <AcceptInvitePage /> },
       {
         element: <RequireAuth />,
         children: [
@@ -27,7 +27,8 @@ const router = createBrowserRouter([
             element: <AppShell />,
             children: [
               { index: true, element: <HomePage /> },
-              ...NAV_ITEMS.filter((n) => n.path !== '/').map((n) => ({ path: n.path, element: <ComingSoonPage path={n.path} /> })),
+              { path: '/team', element: <TeamPage /> },
+              ...NAV_ITEMS.filter((n) => n.path !== '/' && !n.built).map((n) => ({ path: n.path, element: <ComingSoonPage path={n.path} /> })),
               { path: '*', element: <NotFoundPage /> },
             ],
           },

@@ -13,11 +13,16 @@ model User {
   email        String   @unique
   name         String
   passwordHash String   @map("password_hash")
+  /// Workspace role: admin | project_manager | developer | viewer
+  roleId       String   @map("role_id")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  role          Role           @relation(fields: [roleId], references: [id])
   refreshTokens RefreshToken[]
+  invitesSent   Invite[]       @relation("InvitedBy")
 
+  @@index([roleId])
   @@map("users")
 }
 
@@ -38,4 +43,60 @@ model RefreshToken {
   @@index([userId])
   @@index([familyId])
   @@map("refresh_tokens")
+}
+
+/// The four fixed workspace roles. Rows are inserted by the migration; ids are stable text keys.
+model Role {
+  id        String @id
+  name      String @unique
+  sortOrder Int    @map("sort_order")
+
+  users       User[]
+  permissions RolePermission[]
+  invites     Invite[]
+
+  @@map("roles")
+}
+
+/// Every action that can be allowed or denied, e.g. "task:move". Inserted by the migration.
+model Permission {
+  key       String @id
+  label     String
+  sortOrder Int    @map("sort_order")
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+/// Which role may do what. Editable from the permission matrix (except the Admin role).
+model RolePermission {
+  roleId        String @map("role_id")
+  permissionKey String @map("permission_key")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
+
+  @@id([roleId, permissionKey])
+  @@map("role_permissions")
+}
+
+/// An emailed invitation. Only a hash of the link token is stored. Pending = not accepted,
+/// not revoked, not expired.
+model Invite {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  email       String
+  roleId      String    @map("role_id")
+  tokenHash   String    @unique @map("token_hash")
+  invitedById String    @map("invited_by_id") @db.Uuid
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(3)
+  acceptedAt  DateTime? @map("accepted_at") @db.Timestamptz(3)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  role      Role @relation(fields: [roleId], references: [id])
+  invitedBy User @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@map("invites")
 }

@@ -1,7 +1,9 @@
-import { Router, type CookieOptions, type RequestHandler, type Response } from 'express';
-import rateLimit from 'express-rate-limit';
-import { ERROR_CODES, loginInput, registerInput, type AuthResponse } from '@taskflow/core';
+import { Router, type CookieOptions, type Response } from 'express';
+import { acceptInviteInput, loginInput, registerInput, type AuthResponse, type SessionUser } from '@taskflow/core';
+import { z } from 'zod';
 import { AppError, parse, unauthorized } from '../../http/errors';
+import { createRateLimiter } from '../../http/rate-limit';
+import type { AccessService } from '../access/access.service';
 import type { UserRecord } from './auth.repository';
 import { toPublicUser, type AuthService } from './auth.service';
 import { createRequireAuth, currentUserId } from './require-auth';
@@ -21,7 +23,9 @@ const readRefreshCookie = (cookies: unknown): string | undefined => {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 };
 
-export function createAuthRouter(auth: AuthService, options: AuthRouterOptions): Router {
+const tokenParam = z.object({ token: z.string().min(20).max(200) });
+
+export function createAuthRouter(auth: AuthService, access: Pick<AccessService, 'permissionsOf' | 'previewInvite' | 'acceptInvite'>, options: AuthRouterOptions): Router {
   const cookieOptions: CookieOptions = {
     httpOnly: true, // JavaScript in the page can never read it
     secure: options.secureCookies,
@@ -29,36 +33,29 @@ export function createAuthRouter(auth: AuthService, options: AuthRouterOptions):
     path: '/api/auth', // only sent to the auth endpoints
     maxAge: auth.refreshTokenTtlDays * 86_400_000,
   };
-
-  /** Slows down password guessing: 20 attempts per 15 minutes per IP on login and register. */
-  const authLimiter: RequestHandler = options.rateLimit
-    ? rateLimit({
-        windowMs: 15 * 60_000,
-        limit: 20,
-        standardHeaders: 'draft-8',
-        legacyHeaders: false,
-        message: { error: { code: ERROR_CODES.rateLimited, message: 'Too many attempts. Wait a few minutes and try again.' } },
-      })
-    : (_req, _res, next) => next();
-
+  const limiter = createRateLimiter(options.rateLimit);
   const requireAuth = createRequireAuth(auth.verifyAccessToken);
 
-  function sendSession(res: Response, user: UserRecord, refreshToken: string, status = 200) {
+  async function sessionUser(user: UserRecord): Promise<SessionUser> {
+    return { user: toPublicUser(user), permissions: await access.permissionsOf(user.roleId) };
+  }
+
+  async function sendSession(res: Response, user: UserRecord, refreshToken: string, status = 200) {
+    const body: AuthResponse = { accessToken: auth.signAccessToken(user.id), ...(await sessionUser(user)) };
     res.cookie(REFRESH_COOKIE, refreshToken, cookieOptions);
-    const body: AuthResponse = { accessToken: auth.signAccessToken(user.id), user: toPublicUser(user) };
     res.status(status).json(body);
   }
 
   const router = Router();
 
-  router.post('/register', authLimiter, async (req, res) => {
+  router.post('/register', limiter, async (req, res) => {
     const user = await auth.register(parse(registerInput, req.body));
-    sendSession(res, user, await auth.issueRefreshToken(user.id), 201);
+    await sendSession(res, user, await auth.issueRefreshToken(user.id), 201);
   });
 
-  router.post('/login', authLimiter, async (req, res) => {
+  router.post('/login', limiter, async (req, res) => {
     const user = await auth.login(parse(loginInput, req.body));
-    sendSession(res, user, await auth.issueRefreshToken(user.id));
+    await sendSession(res, user, await auth.issueRefreshToken(user.id));
   });
 
   router.post('/refresh', async (req, res) => {
@@ -66,7 +63,7 @@ export function createAuthRouter(auth: AuthService, options: AuthRouterOptions):
     try {
       if (!token) throw unauthorized('Please sign in');
       const { userId, refreshToken } = await auth.rotateRefreshToken(token);
-      sendSession(res, await auth.getUser(userId), refreshToken);
+      await sendSession(res, await auth.getUser(userId), refreshToken);
     } catch (err) {
       // Only an invalid session clears the cookie; a database hiccup (500) must not log the user out.
       if (err instanceof AppError && err.status === 401) res.clearCookie(REFRESH_COOKIE, cookieOptions);
@@ -82,7 +79,20 @@ export function createAuthRouter(auth: AuthService, options: AuthRouterOptions):
   });
 
   router.get('/me', requireAuth, async (req, res) => {
-    res.json({ user: toPublicUser(await auth.getUser(currentUserId(req))) });
+    res.json(await sessionUser(await auth.getUser(currentUserId(req))));
+  });
+
+  /* ---------- invite links (public: the person has no account yet) ---------- */
+
+  router.get('/invites/:token', limiter, async (req, res) => {
+    const { token } = parse(tokenParam, req.params);
+    res.json(await access.previewInvite(token));
+  });
+
+  router.post('/invites/:token/accept', limiter, async (req, res) => {
+    const { token } = parse(tokenParam, req.params);
+    const user = await access.acceptInvite(token, parse(acceptInviteInput, req.body));
+    await sendSession(res, user, await auth.issueRefreshToken(user.id), 201);
   });
 
   return router;

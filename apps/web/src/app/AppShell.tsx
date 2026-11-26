@@ -5,6 +5,7 @@ import { signOut, useSession } from '../features/auth/session';
 import { Icon } from './icons';
 import { NAV_ITEMS } from './nav';
 import { toggleTheme } from './theme';
+import { Toaster } from './toast';
 
 export const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
@@ -42,6 +43,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }
@@ -68,6 +70,7 @@ function UserMenu({ user }: { user: PublicUser }) {
           <div>
             <b>{user.name}</b>
             <div className="muted small">{user.email}</div>
+            <span className="pill" style={{ marginTop: 4, display: 'inline-block' }}>{user.role.name}</span>
           </div>
         </div>
         <button className="menu-item" onClick={toggleTheme}><Icon name="moon" size={16} /> Toggle dark mode</button>

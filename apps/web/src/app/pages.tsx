@@ -25,13 +25,14 @@ export function HomePage() {
           <dl className="details">
             <dt>Name</dt><dd>{user.name}</dd>
             <dt>Email</dt><dd>{user.email}</dd>
+            <dt>Role</dt><dd>{user.role.name}</dd>
             <dt>Member since</dt><dd>{joined}</dd>
           </dl>
         </section>
         <section className="card" aria-labelledby="next-h">
           <h2 id="next-h" className="card-title">Coming next</h2>
           <ul className="soon-list">
-            {[...NAV_ITEMS].sort((a, b) => a.module - b.module).map((n) => (
+            {NAV_ITEMS.filter((n) => !n.built).toSorted((a, b) => a.module - b.module).map((n) => (
               <li key={n.path}><Icon name={n.icon} size={16} /><span>{n.label}</span><span className="pill">Module {n.module}</span></li>
             ))}
           </ul>
