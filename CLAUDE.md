@@ -63,7 +63,7 @@ Before doing anything else:
 ## Frontend rules (rubric: State, Network, Components)
 
 - **Real data only:** every screen shows data from the API, which reads PostgreSQL. Never hard-code mock or demo data in the web app; the prototype's fake data is only a visual reference. (In-memory dummy data is allowed only inside automated tests.)
-- Match `../taskflow-prototype.html` for layout, colours and wording.
+- Match `docs/taskflow-prototype.html` for layout, colours and wording.
 - **Minimal `useEffect`**: derive values during render, put user actions in event handlers, and use `useSyncExternalStore` for browser subscriptions.
 - Server data goes through TanStack Query. Mutations are **optimistic with rollback** and a clear error message.
 - Filters, sorting, paging and tabs live in the **URL** (`useUrlState<T>`).

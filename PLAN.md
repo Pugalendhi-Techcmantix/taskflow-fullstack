@@ -3,7 +3,7 @@
 Version 1 of the client's **Full-Spectrum Frontend Engineering Playbook** capstone (see `../Frontend.pdf`):
 an Advanced Project Management System built with **React + TypeScript, Express, Prisma and PostgreSQL**.
 
-- **Design reference:** `../taskflow-prototype.html` (approved clickable prototype). Screens, layout, colours and behaviour follow it.
+- **Design reference:** `docs/taskflow-prototype.html` (approved clickable prototype). Screens, layout, colours and behaviour follow it.
 - **Quality bar:** the PDF's PR rubric (Part 6). Every module must reach **Level 3 ("Senior Target")** or higher.
 - **Working mode:** Claude Code builds, the user tests and approves. One module at a time.
 

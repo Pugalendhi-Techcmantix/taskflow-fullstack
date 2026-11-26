@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — Project Management Prototype</title>
+<style>
+:root{
+  --bg:#f6f7fb;--surface:#fff;--surface-2:#f2f4f9;--border:#e3e6ef;--text:#1b1f2a;--muted:#6b7280;--faint:#9aa1ad;
+  --accent:#4f46e5;--accent-hover:#4338ca;--accent-soft:#eef0ff;--accent-text:#3730a3;
+  --green:#16a34a;--green-soft:#e7f7ed;--red:#dc2626;--red-soft:#fdecec;--amber:#c26d06;--amber-soft:#fdf3e1;
+  --blue:#2563eb;--blue-soft:#e8f0fe;--gray-soft:#eef0f4;--purple:#7c3aed;--purple-soft:#f1ebfe;
+  --radius:10px;--shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.07);--shadow-lg:0 16px 40px rgba(16,24,40,.18);
+}
+[data-theme=dark]{
+  --bg:#0f1117;--surface:#171a22;--surface-2:#1e222c;--border:#2a2f3b;--text:#e7e9ee;--muted:#9aa1ad;--faint:#6b7280;
+  --accent:#818cf8;--accent-hover:#a5b4fc;--accent-soft:#23264a;--accent-text:#c7cbff;
+  --green-soft:#12301e;--red-soft:#3a1717;--amber-soft:#3a2a10;--blue-soft:#162544;--gray-soft:#262a35;--purple-soft:#2a1f45;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer;color:inherit;background:none;border:none}
+input,select,textarea{font:inherit;color:inherit}
+h1{font-size:22px;font-weight:600;letter-spacing:-.01em}
+h3{font-size:15px;font-weight:600}
+h4{font-size:13px;font-weight:600;margin:18px 0 8px}
+.muted{color:var(--muted)}.sub{color:var(--muted);margin-top:2px}
+.spacer{flex:1}
+
+/* inputs & buttons */
+.input,select.input,textarea.input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;outline:none;transition:border-color .15s,box-shadow .15s}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.input:disabled{background:var(--surface-2);color:var(--muted);cursor:not-allowed}
+select.input{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 14px) 52%,calc(100% - 9px) 52%;background-size:5px 5px;background-repeat:no-repeat;padding-right:28px}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:8px;padding:8px 14px;font-weight:500;border:1px solid var(--border);background:var(--surface);transition:background .15s,border-color .15s;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-hover)}
+.btn.danger{color:var(--red)}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.icon-btn{width:36px;height:36px;display:inline-grid;place-items:center;border-radius:8px;color:var(--muted);position:relative}
+.icon-btn:hover{background:var(--surface-2);color:var(--text)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
+.err{color:var(--red);font-size:12px;margin-top:4px;min-height:0}
+.row{display:flex;gap:12px}.row>*{flex:1}
+
+/* badges */
+.badge-p{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.p-Critical{background:var(--red-soft);color:var(--red)}
+.p-High{background:var(--amber-soft);color:var(--amber)}
+.p-Medium{background:var(--blue-soft);color:var(--blue)}
+.p-Low{background:var(--gray-soft);color:var(--muted)}
+.s-todo{background:var(--gray-soft);color:var(--muted)}
+.s-inprogress{background:var(--blue-soft);color:var(--blue)}
+.s-review{background:var(--purple-soft);color:var(--purple)}
+.s-done{background:var(--green-soft);color:var(--green)}
+.chip-active{background:var(--green-soft);color:var(--green)}
+.chip-planned{background:var(--blue-soft);color:var(--blue)}
+.chip-completed{background:var(--gray-soft);color:var(--muted)}
+.type{width:16px;height:16px;border-radius:4px;display:inline-grid;place-items:center;color:#fff;font-size:10px;font-weight:700;flex:none}
+.type-Story{background:#16a34a}.type-Bug{background:#dc2626}.type-Task{background:#2563eb}
+.avatar{border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-weight:600;flex:none;letter-spacing:.02em}
+.avatar.empty{background:var(--gray-soft);color:var(--faint);border:1px dashed var(--faint)}
+.pill{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--gray-soft);color:var(--muted);font-weight:500}
+
+/* auth */
+.auth{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
+.auth-main{display:grid;place-items:center;padding:32px}
+.auth-card{width:100%;max-width:380px}
+.auth-side{background:linear-gradient(150deg,#312e81,#4f46e5 60%,#6366f1);color:#fff;padding:56px;display:flex;flex-direction:column;justify-content:center}
+.auth-side h2{font-size:28px;line-height:1.25;margin-bottom:12px;font-weight:600}
+.auth-side p{opacity:.85;margin-bottom:28px;max-width:420px}
+.mod-list{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:460px}
+.mod-list div{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px 12px;font-size:13px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+.logo{width:32px;height:32px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700}
+.tabs{display:flex;background:var(--surface-2);border-radius:9px;padding:3px;margin:22px 0 20px}
+.tabs button{flex:1;padding:7px;border-radius:7px;font-weight:500;color:var(--muted)}
+.tabs button.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.hint{font-size:12px;color:var(--muted);margin-top:14px;text-align:center}
+
+/* shell */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:236px;flex:none;background:var(--surface);border-right:1px solid var(--border);padding:18px 14px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh}
+.proj-switch label{font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px}
+nav{display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--muted);font-weight:500;text-decoration:none}
+.nav-item:hover{background:var(--surface-2);color:var(--text)}
+.nav-item.active{background:var(--accent-soft);color:var(--accent-text)}
+.nav-sec{font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;padding:12px 10px 4px}
+.side-foot{margin-top:auto;font-size:12px;color:var(--faint);padding:0 10px}
+.main-wrap{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{height:60px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 24px;position:sticky;top:0;z-index:20}
+.search-wrap{position:relative;flex:1;max-width:480px}
+.search-wrap svg.si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--faint)}
+.search-wrap input{padding-left:34px;background:var(--surface-2);border-color:transparent}
+.search-pop{position:absolute;top:44px;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:6px;display:none;max-height:420px;overflow:auto}
+.search-pop.open{display:block}
+.sr-sec{font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;padding:8px 10px 4px}
+.sr-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;cursor:pointer}
+.sr-item:hover{background:var(--surface-2)}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pop-anchor{position:relative}
+.nbadge{position:absolute;top:4px;right:4px;min-width:17px;height:17px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 4px;border:2px solid var(--surface)}
+.nbadge.pulse{animation:pulse .8s ease 2}
+@keyframes pulse{50%{transform:scale(1.35)}}
+.dropdown{position:absolute;right:0;top:44px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);width:300px;display:none;z-index:30}
+.dropdown.open{display:block}
+.notif-dd{width:380px}
+.dd-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)}
+.dd-head button{color:var(--accent);font-size:12px;font-weight:600}
+.notif{display:flex;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border)}
+.notif:last-child{border-bottom:none}
+.notif:hover{background:var(--surface-2)}
+.notif.unread{background:var(--accent-soft)}
+.notif .t{font-size:13px}.notif .time{font-size:11px;color:var(--faint);margin-top:2px}
+.dd-body{max-height:380px;overflow:auto}
+.menu-item{display:flex;align-items:center;gap:10px;padding:9px 14px;width:100%;text-align:left}
+.menu-item:hover{background:var(--surface-2)}
+.avatar-btn{border-radius:50%;padding:2px}
+.avatar-btn:hover{box-shadow:0 0 0 3px var(--accent-soft)}
+.role-banner{background:var(--amber-soft);color:var(--amber);font-size:13px;padding:8px 24px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.role-banner button{text-decoration:underline;font-weight:600;color:inherit}
+main{padding:24px;flex:1}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.page-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* cards & dashboard */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+.stat .label{font-size:12px;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:6px}
+.stat .value{font-size:28px;font-weight:650;margin-top:4px;letter-spacing:-.02em}
+.stat .delta{font-size:12px;color:var(--muted)}
+.grid-2{display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:16px}
+.grid-2.even{grid-template-columns:1fr 1fr}
+.bar-row{display:grid;grid-template-columns:110px 1fr 36px;align-items:center;gap:10px;margin-bottom:10px;font-size:13px}
+.bar{height:8px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.bar>span{display:block;height:100%;border-radius:5px}
+.list-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.list-row:last-child{border-bottom:none}
+.list-row .title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.key{font-size:12px;color:var(--muted);font-weight:500;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.act{display:flex;gap:10px;padding:9px 0;font-size:13px}
+.act .time{font-size:11px;color:var(--faint)}
+.chart-legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-top:6px}
+.chart-legend span{display:inline-flex;align-items:center;gap:6px}
+.chart-legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+
+/* board */
+.filters{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.filters .input{width:auto;min-width:150px}
+.filters .search{min-width:220px}
+.board{display:grid;grid-template-columns:repeat(4,minmax(240px,1fr));gap:14px;overflow-x:auto;padding-bottom:8px}
+.col{background:var(--surface-2);border-radius:12px;padding:10px;display:flex;flex-direction:column;min-height:420px}
+.col-head{display:flex;align-items:center;gap:8px;padding:4px 6px 10px;font-size:13px}
+.col-head .count{background:var(--surface);border-radius:999px;padding:0 8px;font-size:12px;color:var(--muted);font-weight:600}
+.col-head .pts{margin-left:auto;font-size:12px;color:var(--faint)}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.todo{background:#9aa1ad}.dot.inprogress{background:var(--blue)}.dot.review{background:var(--purple)}.dot.done{background:var(--green)}
+.col-body{flex:1;display:flex;flex-direction:column;gap:8px;border-radius:9px;padding:2px;transition:background .15s;min-height:80px}
+.col-body.over{background:var(--accent-soft);outline:2px dashed var(--accent);outline-offset:-2px}
+.col-body:not(:has(.kcard))::after{content:"Drop tasks here";color:var(--faint);font-size:12px;text-align:center;padding:24px 0;border:1px dashed var(--border);border-radius:9px}
+.kcard{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 12px;cursor:grab;box-shadow:var(--shadow);transition:box-shadow .15s,transform .15s}
+.kcard:hover{box-shadow:0 4px 12px rgba(16,24,40,.1);border-color:var(--accent)}
+.kcard.locked{cursor:pointer}
+.kcard.dragging{opacity:.45;transform:rotate(1.5deg)}
+.kcard.flash{animation:flash 1.6s ease}
+@keyframes flash{0%,40%{box-shadow:0 0 0 3px var(--amber)}100%{box-shadow:var(--shadow)}}
+.kc-top{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.kc-top .badge-p{margin-left:auto}
+.kc-title{font-weight:500;font-size:13.5px;margin-bottom:10px;line-height:1.4}
+.kc-foot{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.meta{display:inline-flex;align-items:center;gap:3px}
+.overdue{color:var(--red);font-weight:600}
+.add-card{margin-top:8px;padding:8px;border-radius:8px;color:var(--muted);text-align:left;font-weight:500}
+.add-card:hover{background:var(--surface);color:var(--text)}
+.note{background:var(--amber-soft);color:var(--amber);border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:14px}
+
+/* table */
+.table-card{padding:0;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:10px 14px;background:var(--surface-2);border-bottom:1px solid var(--border);white-space:nowrap;user-select:none}
+th.sortable{cursor:pointer}th.sortable:hover{color:var(--text)}
+td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--surface-2)}
+.pager{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;font-size:13px;color:var(--muted)}
+.pager .pages{display:flex;gap:4px}
+.pager button{min-width:32px;height:32px;border-radius:7px;border:1px solid var(--border);background:var(--surface)}
+.pager button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.pager button:disabled{opacity:.4;cursor:not-allowed}
+.empty-row{text-align:center;color:var(--muted);padding:40px}
+
+/* sprints & projects */
+.sprint{margin-bottom:14px}
+.sprint-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.progress{height:8px;background:var(--surface-2);border-radius:5px;overflow:hidden;margin:12px 0 8px}
+.progress>span{display:block;height:100%;background:var(--accent);border-radius:5px}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.proj{cursor:pointer;transition:border-color .15s,transform .15s}
+.proj:hover{border-color:var(--accent);transform:translateY(-2px)}
+.proj-key{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-weight:700;color:#fff;font-size:13px}
+.stack{display:flex}.stack .avatar{border:2px solid var(--surface);margin-left:-8px}.stack .avatar:first-child{margin-left:0}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-state h3{color:var(--text);margin-bottom:6px}
+
+/* permissions */
+.matrix td,.matrix th{text-align:center}
+.matrix td:first-child,.matrix th:first-child{text-align:left}
+.matrix input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.matrix input:disabled{cursor:not-allowed}
+.perm-code{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--faint)}
+
+/* activity */
+.timeline{position:relative;padding-left:8px}
+.tl-day{font-size:12px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin:18px 0 6px}
+.tl-day:first-child{margin-top:0}
+.tl-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.tl-item:last-child{border-bottom:none}
+.tl-icon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none}
+.tl-task{background:var(--blue-soft);color:var(--blue)}.tl-sprint{background:var(--green-soft);color:var(--green)}.tl-project{background:var(--purple-soft);color:var(--purple)}.tl-comment{background:var(--amber-soft);color:var(--amber)}.tl-user{background:var(--gray-soft);color:var(--muted)}
+.link{color:var(--accent);cursor:pointer;font-weight:600}
+
+/* modal */
+.backdrop{position:fixed;inset:0;background:rgba(15,17,23,.5);display:grid;place-items:center;z-index:50;padding:20px;animation:fade .15s}
+@keyframes fade{from{opacity:0}}
+.modal{background:var(--surface);border-radius:14px;box-shadow:var(--shadow-lg);width:100%;max-width:520px;max-height:calc(100vh - 40px);overflow:auto;animation:pop .18s ease}
+.modal.lg{max-width:900px}
+@keyframes pop{from{transform:translateY(8px) scale(.98);opacity:0}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1}
+.modal-body{padding:20px}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border)}
+.task-grid{display:grid;grid-template-columns:1fr 260px}
+.task-main{padding:20px;border-right:1px solid var(--border);min-width:0}
+.task-side{padding:20px;background:var(--surface-2)}
+.title-input{font-size:20px;font-weight:600;border:1px solid transparent;border-radius:8px;padding:4px 8px;margin-left:-8px;width:calc(100% + 8px);background:transparent;outline:none}
+.title-input:hover:not(:disabled){border-color:var(--border)}
+.title-input:focus{border-color:var(--accent);background:var(--surface)}
+.comment{display:flex;gap:10px;margin-bottom:12px}
+.comment .bubble{background:var(--surface-2);border-radius:10px;padding:8px 12px;flex:1}
+.comment .who{font-size:12px;font-weight:600}.comment .who span{color:var(--faint);font-weight:400;margin-left:6px}
+.hist{font-size:12.5px;color:var(--muted);padding:5px 0;display:flex;gap:8px}
+
+/* toasts */
+#toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:60}
+.toast{background:#1b1f2a;color:#fff;padding:11px 16px;border-radius:10px;box-shadow:var(--shadow-lg);font-size:13px;display:flex;align-items:center;gap:10px;max-width:380px;animation:slide .25s ease}
+.toast.live::before{content:"";width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.3);flex:none}
+.toast.error{background:var(--red)}
+[data-theme=dark] .toast{background:#2a2f3b;border:1px solid #3d4352}
+[data-theme=dark] .btn.primary,[data-theme=dark] .pager button.active{color:#11131a}
+@keyframes slide{from{transform:translateX(30px);opacity:0}}
+.mobile-only{display:none}
+
+/* optimistic saving + rollback */
+.kcard.saving{opacity:.7;border-style:dashed;cursor:progress}
+.kcard.saving .kc-title::after{content:" · saving…";color:var(--faint);font-weight:400;font-size:12px}
+.kcard.reverted{animation:shake .45s ease;border-color:var(--red)}
+@keyframes shake{20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+.kcard:focus-visible,.nav-item:focus-visible,.btn:focus-visible,.icon-btn:focus-visible,.avatar-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* loading + error states */
+.sk{background:linear-gradient(90deg,var(--surface-2) 25%,var(--border) 50%,var(--surface-2) 75%);background-size:200% 100%;animation:sh 1.2s linear infinite;border-radius:8px}
+@keyframes sh{to{background-position:-200% 0}}
+.error-state{text-align:center;padding:56px 20px}
+.error-state .ic-wrap{width:46px;height:46px;border-radius:50%;background:var(--red-soft);color:var(--red);display:grid;place-items:center;margin:0 auto 12px}
+.api-banner{background:var(--red-soft);color:var(--red)}
+.role-banner .ic,.toast .ic{flex:none}
+/* keyboard shortcuts */
+kbd{font-family:ui-monospace,Menlo,monospace;font-size:11px;background:var(--surface-2);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--text);white-space:nowrap}
+.sc-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}
+.sc-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.sc-row>span:last-child{display:flex;gap:4px;flex:none}
+/* subtasks + autosave */
+.subtask{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13.5px}
+.subtask input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);flex:none}
+.subtask.done span{text-decoration:line-through;color:var(--faint)}
+.subtask .icon-btn{width:26px;height:26px;margin-left:auto;flex:none}
+.save-ind{font-size:12px;color:var(--faint);font-weight:400;margin-left:8px}
+.backdrop.still,.backdrop.still .modal{animation:none}
+/* collapsible sidebar (desktop) */
+.collapse-btn .ic{transition:transform .2s}
+@media (min-width:861px){
+  .shell.collapsed .sidebar{width:68px;padding:18px 10px}
+  .shell.collapsed .sidebar .nl,.shell.collapsed .proj-switch,.shell.collapsed .nav-sec,.shell.collapsed .side-foot,.shell.collapsed .brand-name{display:none}
+  .shell.collapsed .nav-item{justify-content:center;padding:10px}
+  .shell.collapsed .brand{justify-content:center}
+  .shell.collapsed .collapse-btn .ic{transform:rotate(180deg)}
+}
+@media (max-width:860px){.collapse-btn{display:none!important}.sc-grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+@media (max-width:1100px){.stats{grid-template-columns:repeat(2,1fr)}.grid-2,.grid-2.even{grid-template-columns:1fr}}
+@media (max-width:860px){
+  .auth{grid-template-columns:1fr}.auth-side{display:none}
+  .sidebar{position:fixed;left:0;z-index:40;transform:translateX(-100%);transition:transform .2s;box-shadow:var(--shadow-lg)}
+  .sidebar.open{transform:none}
+  .mobile-only{display:inline-grid}
+  .task-grid{grid-template-columns:1fr}.task-main{border-right:none}
+  main{padding:16px}.topbar{padding:0 12px}
+  #topCreate span{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+/* ---------- icons ---------- */
+const ICONS={
+  dashboard:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  board:'<rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="11" rx="1"/><rect x="17" y="4" width="4" height="7" rx="1"/>',
+  sprint:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+  msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  menu:'<path d="M3 6h18M3 12h18M3 18h18"/>',
+  cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
+  trend:'<path d="m3 17 6-6 4 4 8-8M14 7h7v7"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+  kbd:'<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  chev:'<path d="m15 18-6-6 6-6"/>',
+  refresh:'<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+};
+const I=(n,s=18)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
+
+/* ---------- helpers ---------- */
+const DAY=864e5;
+const today=new Date();today.setHours(0,0,0,0);
+const T0=today.getTime();
+const dOff=n=>T0+n*DAY;
+const iso=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const fmt=t=>new Date(t).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+const ago=t=>{const s=(Date.now()-t)/1000;if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago'};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const sum=(a,f)=>a.reduce((x,y)=>x+f(y),0);
+const $=id=>document.getElementById(id);
+const opt=(v,l,sel)=>`<option value="${esc(v)}" ${String(v)===String(sel??'')?'selected':''}>${esc(l)}</option>`;
+/* browser storage: only for conveniences (session, theme, sidebar); every access guarded */
+const kv=s=>({get:k=>{try{return window[s].getItem(k)}catch(e){return null}},set:(k,v)=>{try{v?window[s].setItem(k,v):window[s].removeItem(k)}catch(e){}}});
+const local=kv('localStorage'),session=kv('sessionStorage');
+
+const STATUS={todo:'To Do',inprogress:'In Progress',review:'In Review',done:'Done'};
+const STATUS_ORDER=['todo','inprogress','review','done'];
+const NEXT={todo:'inprogress',inprogress:'review',review:'done'};
+const PRIORITIES=['Critical','High','Medium','Low'];
+const TYPES=['Story','Task','Bug'];
+const PERMS={
+  'project:create':'Create projects','project:update':'Edit project settings','project:delete':'Delete projects',
+  'sprint:manage':'Create, start & complete sprints','task:create':'Create tasks','task:update':'Edit tasks',
+  'task:move':'Move cards on the board','task:delete':'Delete tasks','comment:create':'Comment on tasks',
+  'user:manage':'Invite & manage members','role:manage':'Edit roles & permissions'
+};
+const ROLE_NAMES=['Admin','Project Manager','Developer','Viewer'];
+const COLORS=['#4f46e5','#0891b2','#db2777','#ea580c','#16a34a','#7c3aed','#0d9488','#ca8a04'];
+
+/* ---------- mock data ---------- */
+const state={
+  authed:false,route:'dashboard',projectId:'p1',demoRole:null,drag:null,
+  apiMode:'off',               // off | flaky | down  — simulated server, to demo loading, errors and rollback
+  view:{status:'success'},     // discriminated union: loading | error | success
+  openTaskId:null,
+  board:{q:'',assignee:'',priority:'',type:''},
+  table:{q:'',status:'',priority:'',assignee:'',type:'',sprint:'',sort:'key',dir:1,page:1,size:8},
+  actFilter:{user:'',type:''},
+  users:[
+    {id:'u1',name:'Arjun Mehta',email:'arjun@taskflow.dev',role:'Admin',color:COLORS[0]},
+    {id:'u2',name:'Priya Sharma',email:'priya@taskflow.dev',role:'Project Manager',color:COLORS[2]},
+    {id:'u3',name:'Rahul Verma',email:'rahul@taskflow.dev',role:'Developer',color:COLORS[1]},
+    {id:'u4',name:'Sneha Iyer',email:'sneha@taskflow.dev',role:'Developer',color:COLORS[3]},
+    {id:'u5',name:'Karan Patel',email:'karan@taskflow.dev',role:'Developer',color:COLORS[4]},
+    {id:'u6',name:'Ananya Rao',email:'ananya@taskflow.dev',role:'Viewer',color:COLORS[5]},
+  ],
+  roles:{
+    'Admin':Object.keys(PERMS),
+    'Project Manager':['project:create','project:update','sprint:manage','task:create','task:update','task:move','task:delete','comment:create'],
+    'Developer':['task:create','task:update','task:move','comment:create'],
+    'Viewer':[],
+  },
+  projects:[
+    {id:'p1',key:'TF',name:'TaskFlow Web',desc:'Core web app: auth, boards, sprints and real-time notifications.',color:COLORS[0],seq:100},
+    {id:'p2',key:'MOB',name:'Mobile App',desc:'React Native companion app for on-the-go task updates.',color:COLORS[3],seq:100},
+    {id:'p3',key:'MKT',name:'Marketing Site',desc:'Public landing site, pricing and docs.',color:COLORS[6],seq:100},
+  ],
+  sprints:[
+    {id:'s1',projectId:'p1',name:'Sprint 1',goal:'Auth foundation & project setup',start:dOff(-21),end:dOff(-8),status:'completed'},
+    {id:'s2',projectId:'p1',name:'Sprint 2',goal:'Kanban board & real-time notifications',start:dOff(-7),end:dOff(6),status:'active'},
+    {id:'s3',projectId:'p1',name:'Sprint 3',goal:'Search, dashboard & reporting',start:dOff(7),end:dOff(20),status:'planned'},
+    {id:'s4',projectId:'p2',name:'Sprint 1',goal:'Mobile MVP',start:dOff(-5),end:dOff(8),status:'active'},
+    {id:'s5',projectId:'p3',name:'Sprint 1',goal:'Launch the public site',start:dOff(2),end:dOff(15),status:'planned'},
+  ],
+  tasks:[],notifications:[],activity:[],
+};
+const SEED={
+  p1:[
+    ['Set up JWT access & refresh tokens','Story','done','High','u3','s1',5,-12],
+    ['Login & register pages','Story','done','Medium','u4','s1',3,-11],
+    ['Seed script for default roles & permissions','Task','done','Medium','u5','s1',2,-10],
+    ['Role-based route guards','Story','done','High','u3','s1',3,-9],
+    ['Create project form','Story','done','Medium','u4','s1',3,-8],
+    ['Prisma schema v1','Task','done','Critical','u1','s1',5,-9],
+    ['Kanban drag & drop with dnd-kit','Story','inprogress','High','u4','s2',8,3],
+    ['Persist card order (position field)','Task','todo','Medium','u3','s2',3,4],
+    ['Task detail drawer','Story','review','Medium','u5','s2',5,1],
+    ['Comment threads on tasks','Story','todo','Low','u5','s2',3,5],
+    ['Socket.IO notification service','Story','inprogress','High','u3','s2',5,2],
+    ['Notification bell dropdown','Task','todo','Medium','u4','s2',2,5],
+    ['Sprint create & start flow','Story','done','High','u1','s2',5,-2],
+    ['Permission matrix API','Story','review','High','u3','s2',5,0],
+    ['Fix token refresh race condition','Bug','inprogress','Critical','u5','s2',3,-1],
+    ['Board flickers on fast drag','Bug','todo','High','u4','s2',2,2],
+    ['Dashboard KPI cards','Task','done','Medium','u5','s2',3,-3],
+    ['Activity log event listeners','Story','todo','Medium','u1','s2',5,6],
+    ['Global search endpoint','Story','todo','Medium',null,'s3',5,14],
+    ['Tasks table filters & pagination','Story','todo','Medium','u4','s3',5,15],
+    ['Burndown chart','Task','todo','Low','u5','s3',3,16],
+    ['Sprint completion report','Story','todo','Low',null,'s3',3,18],
+    ['Rate limiting on auth routes','Task','todo','Medium',null,null,2,null],
+    ['Email invites for project members','Story','todo','Low',null,null,5,null],
+    ['Dark mode theme','Task','todo','Low',null,null,2,null],
+  ],
+  p2:[
+    ['Expo project setup','Task','done','Medium','u5','s4',2,-4],
+    ['Push notifications','Story','inprogress','High','u3','s4',5,3],
+    ['Offline task cache','Story','todo','Medium','u4','s4',5,6],
+    ['Biometric login','Story','todo','Low',null,'s4',3,8],
+    ['Crash on Android 12 when opening board','Bug','review','Critical','u5','s4',3,1],
+  ],
+  p3:[
+    ['Landing page copy','Task','todo','Medium','u1','s5',2,10],
+    ['Pricing page','Story','todo','Low',null,'s5',3,12],
+    ['SEO meta tags','Task','todo','Low',null,null,1,null],
+  ],
+};
+const DESCS=['Acceptance criteria:\n- Works for all roles\n- Covered by tests\n- Matches the Figma design','Follow the controller → service → Prisma pattern. Emit a domain event after the DB write.','Make sure the UI handles loading and error states.'];
+Object.entries(SEED).forEach(([pid,rows])=>{
+  const p=state.projects.find(x=>x.id===pid);
+  rows.forEach((r,i)=>{
+    p.seq++;
+    state.tasks.push({id:'t'+pid+i,key:p.key+'-'+p.seq,projectId:pid,title:r[0],type:r[1],status:r[2],priority:r[3],assignee:r[4],sprintId:r[5],points:r[6],due:r[7]==null?null:iso(dOff(r[7])),order:i,desc:DESCS[i%3],comments:[],subtasks:[],createdAt:dOff(-25+i)});
+  });
+});
+const tk=key=>state.tasks.find(t=>t.key===key);
+tk('TF-107').comments=[{id:uid(),userId:'u2',text:'Let\'s use a float position column so a drop only updates one row.',time:Date.now()-5*3600e3},{id:uid(),userId:'u4',text:'Agreed, working on it now. dnd-kit sortable is wired up.',time:Date.now()-3*3600e3}];
+tk('TF-115').comments=[{id:uid(),userId:'u3',text:'Happens when two requests refresh at the same time. Need a refresh lock in the axios interceptor.',time:Date.now()-26*3600e3}];
+tk('TF-114').comments=[{id:uid(),userId:'u1',text:'Please add tests for the Viewer role.',time:Date.now()-2*3600e3}];
+const subs=(key,list)=>tk(key).subtasks=list.map(([title,done])=>({id:uid(),title,done}));
+subs('TF-107',[['Install dnd-kit and wire up sortable columns',true],['Drag overlay and drop animation',true],['Persist new position on drop',false]]);
+subs('TF-111',[['Socket.IO server with auth handshake',true],['Room per project',false],['Reconnect and missed-event replay',false]]);
+subs('TF-114',[['GET /roles with permissions',true],['PATCH /roles/:id',true],['Tests for the Viewer role',false]]);
+
+const seedAct=[
+  ['u4','task','moved <b>TF-107</b> from To Do to In Progress','TF-107',0.4],
+  ['u1','comment','commented on <b>TF-114</b>','TF-114',2],
+  ['u5','task','moved <b>TF-109</b> from In Progress to In Review','TF-109',3],
+  ['u4','comment','commented on <b>TF-107</b>','TF-107',3.1],
+  ['u3','task','changed priority of <b>TF-115</b> from High to Critical','TF-115',6],
+  ['u2','comment','commented on <b>TF-107</b>','TF-107',5],
+  ['u1','task','moved <b>TF-113</b> from In Review to Done','TF-113',20],
+  ['u2','sprint','started <b>Sprint 2</b>',null,7*24],
+  ['u2','sprint','completed <b>Sprint 1</b> — 6 of 6 tasks done',null,7*24+1],
+  ['u1','user','invited <b>Ananya Rao</b> as Viewer',null,9*24],
+  ['u1','project','created project <b>Marketing Site</b>',null,12*24],
+];
+seedAct.forEach(([u,type,text,key,h])=>state.activity.push({id:uid(),userId:u,type,text,taskId:key?tk(key).id:null,projectId:'p1',time:Date.now()-h*3600e3}));
+state.activity.sort((a,b)=>b.time-a.time);
+state.notifications=[
+  {id:uid(),userId:'u2',text:'<b>Priya Sharma</b> mentioned you on <b>TF-107</b>',taskId:tk('TF-107').id,time:Date.now()-5*3600e3,read:false},
+  {id:uid(),userId:'u3',text:'<b>Rahul Verma</b> moved <b>TF-114</b> to In Review',taskId:tk('TF-114').id,time:Date.now()-7*3600e3,read:false},
+  {id:uid(),userId:'u2',text:'<b>Priya Sharma</b> assigned <b>TF-118</b> to you',taskId:tk('TF-118').id,time:Date.now()-30*3600e3,read:true},
+  {id:uid(),userId:'u2',text:'<b>Sprint 2</b> has started — 12 tasks, 51 points',taskId:null,time:Date.now()-7*24*3600e3,read:true},
+];
+
+/* ---------- selectors ---------- */
+const me=()=>state.users[0];
+const role=()=>state.demoRole||me().role;
+const can=p=>(state.roles[role()]||[]).includes(p);
+const user=id=>state.users.find(u=>u.id===id);
+const task=id=>state.tasks.find(t=>t.id===id);
+const curProject=()=>state.projects.find(p=>p.id===state.projectId);
+const projTasks=(pid=state.projectId)=>state.tasks.filter(t=>t.projectId===pid);
+const projSprints=(pid=state.projectId)=>state.sprints.filter(s=>s.projectId===pid).sort((a,b)=>a.start-b.start);
+const activeSprint=(pid=state.projectId)=>state.sprints.find(s=>s.projectId===pid&&s.status==='active');
+const sprintName=id=>{const s=state.sprints.find(x=>x.id===id);return s?s.name:'Backlog'};
+const isOverdue=t=>t.due&&t.status!=='done'&&t.due<iso(T0);
+const daysLeft=s=>Math.max(0,Math.ceil((s.end-T0)/DAY));
+
+/* ---------- UI atoms ---------- */
+const initials=n=>n.split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
+const avatar=(id,s=26)=>{const u=user(id);if(!u)return`<span class="avatar empty" style="width:${s}px;height:${s}px" title="Unassigned">${I('user',s*.5)}</span>`;return`<span class="avatar" title="${esc(u.name)}" style="width:${s}px;height:${s}px;background:${u.color};font-size:${Math.round(s*.38)}px">${initials(u.name)}</span>`};
+const prio=p=>`<span class="badge-p p-${p}">${p}</span>`;
+const statusB=s=>`<span class="badge-p s-${s}">${STATUS[s]}</span>`;
+const typeI=t=>`<span class="type type-${t}" title="${t}">${t==='Bug'?'!':t==='Story'?'S':'T'}</span>`;
+const dueLabel=t=>t.due?`<span class="meta ${isOverdue(t)?'overdue':''}">${I('cal',12)} ${fmt(new Date(t.due+'T00:00'))}</span>`:'';
+
+function toast(msg,kind=''){const el=document.createElement('div');el.className='toast '+kind;el.innerHTML=`<span>${msg}</span>`;$('toasts').appendChild(el);while($('toasts').children.length>3)$('toasts').firstChild.remove();setTimeout(()=>{el.style.transition='opacity .3s';el.style.opacity='0';setTimeout(()=>el.remove(),300)},3800)}
+function openModal(html,still){state.openTaskId=null;$('modal-root').innerHTML=`<div class="backdrop ${still?'still':''}" role="dialog" aria-modal="true" onmousedown="if(event.target===this)closeModal()">${html}</div>`}
+function closeModal(){$('modal-root').innerHTML='';state.openTaskId=null;state.descLoggedFor=null}
+
+/* ---------- simulated API (stand-in for the real backend) ---------- */
+const API_MODES={off:'Normal: every request succeeds',flaky:'Flaky: 30% of saves fail',down:'Server down: every request fails'};
+function apiCall(kind){ // kind: 'GET' | 'MUTATE'
+  const m=state.apiMode,fail=m==='down'||(m==='flaky'&&kind==='MUTATE'&&Math.random()<.3);
+  return new Promise((res,rej)=>setTimeout(()=>fail?rej(new Error('500 Internal Server Error')):res(),kind==='GET'?380:650));
+}
+function setApiMode(m){
+  state.apiMode=API_MODES[m]?m:'off';closeDDs();renderChrome();
+  toast(state.apiMode==='off'?'Server simulation is back to normal':`Server simulation: <b>${esc(API_MODES[state.apiMode])}</b>`,state.apiMode==='off'?'':'error');
+  if(state.apiMode==='down'||state.view.status==='error')loadRoute();
+}
+function log(type,text,taskId,userId){state.activity.unshift({id:uid(),type,text,taskId:taskId||null,projectId:state.projectId,userId:userId||me().id,time:Date.now()})}
+function notify(text,taskId,userId){state.notifications.unshift({id:uid(),text,taskId:taskId||null,userId,time:Date.now(),read:false});renderBadge(true)}
+
+/* ---------- auth ---------- */
+let authTab='login';
+function renderAuth(){
+  $('app').innerHTML=`
+  <div class="auth">
+    <div class="auth-main"><div class="auth-card">
+      <div class="brand"><div class="logo">TF</div>TaskFlow</div>
+      <div class="tabs">
+        <button class="${authTab==='login'?'active':''}" onclick="authTab='login';renderAuth()">Sign in</button>
+        <button class="${authTab==='register'?'active':''}" onclick="authTab='register';renderAuth()">Create account</button>
+      </div>
+      ${authTab==='login'?`
+      <form onsubmit="doLogin(event)" novalidate>
+        <div class="field"><label>Email</label><input class="input" id="lEmail" type="email" value="arjun@taskflow.dev" oninput="$('eEmail').textContent=''"><div class="err" id="eEmail"></div></div>
+        <div class="field"><label>Password</label><input class="input" id="lPass" type="password" value="demo1234" oninput="$('ePass').textContent=''"><div class="err" id="ePass"></div></div>
+        <button class="btn primary" style="width:100%;justify-content:center;padding:10px">Sign in</button>
+      </form>
+      <p class="hint">Demo login is pre-filled. Any valid email + a password of 6 or more characters works.</p>`:`
+      <form onsubmit="doRegister(event)" novalidate>
+        <div class="field"><label>Full name</label><input class="input" id="rName" oninput="$('erName').textContent=''"><div class="err" id="erName"></div></div>
+        <div class="field"><label>Work email</label><input class="input" id="rEmail" type="email" oninput="$('erEmail').textContent=''"><div class="err" id="erEmail"></div></div>
+        <div class="row">
+          <div class="field"><label>Password</label><input class="input" id="rPass" type="password" oninput="$('erPass').textContent=''"><div class="err" id="erPass"></div></div>
+          <div class="field"><label>Confirm</label><input class="input" id="rPass2" type="password" oninput="$('erPass2').textContent=''"><div class="err" id="erPass2"></div></div>
+        </div>
+        <button class="btn primary" style="width:100%;justify-content:center;padding:10px">Create account</button>
+      </form>
+      <p class="hint">New accounts join the workspace as Admin in this prototype.</p>`}
+    </div></div>
+    <div class="auth-side">
+      <h2>Plan sprints, move work, ship together.</h2>
+      <p>A clickable prototype of the TaskFlow project management app, running on mock data in your browser.</p>
+      <div class="mod-list">
+        <div>Auth & users</div><div>Roles & permissions</div><div>Projects</div><div>Sprints</div><div>Tasks & issues</div><div>Kanban drag & drop</div><div>Real-time notifications</div><div>Search & filters</div><div>Dashboard & analytics</div><div>Activity history</div>
+      </div>
+      <p style="margin:22px 0 0;font-size:13px">Plus: filters saved in the URL · optimistic updates with rollback · keyboard shortcuts (press <b>?</b>)</p>
+    </div>
+  </div>`;
+}
+const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function doLogin(e){
+  e.preventDefault();let ok=true;
+  const em=$('lEmail').value.trim(),pw=$('lPass').value;
+  if(!EMAIL_RE.test(em)){$('eEmail').textContent='Enter a valid email address';ok=false}
+  if(pw.length<6){$('ePass').textContent='Password must be at least 6 characters';ok=false}
+  if(!ok)return;
+  me().email=em;enterApp();
+}
+function doRegister(e){
+  e.preventDefault();let ok=true;
+  const n=$('rName').value.trim(),em=$('rEmail').value.trim(),p1=$('rPass').value,p2=$('rPass2').value;
+  if(n.length<2){$('erName').textContent='Enter your name';ok=false}
+  if(!EMAIL_RE.test(em)){$('erEmail').textContent='Enter a valid email address';ok=false}
+  if(p1.length<6){$('erPass').textContent='At least 6 characters';ok=false}
+  if(p1&&p1!==p2){$('erPass2').textContent='Passwords do not match';ok=false}
+  if(!ok)return;
+  me().name=n;me().email=em;enterApp();
+}
+function enterApp(silent){
+  state.authed=true;session.set('tf-session',JSON.stringify({name:me().name,email:me().email}));
+  mountShell();if(local.get('tf-collapsed'))document.querySelector('.shell').classList.add('collapsed');
+  readURL();renderChrome();loadRoute();writeURL();   // deep links survive the login screen and a refresh
+  if(!silent)toast(`Signed in as <b>${esc(me().name)}</b>`);
+}
+function logout(){state.authed=false;state.demoRole=null;session.set('tf-session','');closeModal();history.replaceState(null,'',location.pathname);authTab='login';renderAuth()}
+
+/* ---------- shell ---------- */
+const NAV=[
+  ['dashboard','Dashboard','dashboard'],['projects','Projects','folder'],['board','Board','board'],['sprints','Sprints','sprint'],['tasks','Tasks & issues','list'],
+  ['sec','Workspace'],['team','Team & roles','shield'],['activity','Activity history','clock'],
+];
+function mountShell(){
+  $('app').innerHTML=`
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="logo">TF</div><span class="brand-name">TaskFlow</span></div>
+      <div class="proj-switch"><label for="projSel">Project</label><select class="input" id="projSel" onchange="switchProject(this.value)"></select></div>
+      <nav id="nav" aria-label="Main"></nav>
+      <div class="side-foot">Prototype · mock data resets on refresh<br>Filters live in the URL · press <kbd>?</kbd></div>
+      <button class="nav-item collapse-btn" onclick="toggleSidebar()" title="Collapse sidebar ( [ )" aria-label="Collapse sidebar">${I('chev')}<span class="nl">Collapse</span></button>
+    </aside>
+    <div class="main-wrap">
+      <header class="topbar">
+        <button class="icon-btn mobile-only" onclick="$('sidebar').classList.toggle('open')" aria-label="Menu">${I('menu')}</button>
+        <div class="search-wrap">${I('search',16).replace('class="ic"','class="ic si"')}
+          <input class="input" id="gsearch" placeholder="Search tasks and projects…   press /" autocomplete="off" oninput="onSearch()" onfocus="onSearch()" onkeydown="if(event.key==='Escape'){this.blur();$('searchPop').classList.remove('open')}">
+          <div class="search-pop" id="searchPop"></div>
+        </div>
+        <div class="top-actions">
+          <button class="btn primary" id="topCreate" onclick="openCreateTask()" title="New task (C)">${I('plus',16)}<span>New task</span></button>
+          <button class="icon-btn" onclick="openShortcuts()" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">${I('kbd',20)}</button>
+          <div class="pop-anchor">
+            <button class="icon-btn" onclick="toggleDD('notifDD',event)" aria-label="Notifications">${I('bell',20)}<span class="nbadge" id="nbadge"></span></button>
+            <div class="dropdown notif-dd" id="notifDD"></div>
+          </div>
+          <div class="pop-anchor">
+            <button class="avatar-btn" id="meBtn" onclick="toggleDD('userDD',event)"></button>
+            <div class="dropdown" id="userDD"></div>
+          </div>
+        </div>
+      </header>
+      <div id="roleBanner"></div>
+      <main id="main"></main>
+    </div>
+  </div>`;
+}
+function renderChrome(){
+  $('projSel').innerHTML=state.projects.map(p=>opt(p.id,p.name,state.projectId)).join('');
+  $('nav').innerHTML=NAV.map(n=>n[0]==='sec'?`<div class="nav-sec">${n[1]}</div>`:`<a class="nav-item ${state.route===n[0]?'active':''}" ${state.route===n[0]?'aria-current="page"':''} href="#/${n[0]}" title="${n[1]}">${I(n[2])}<span class="nl">${n[1]}</span></a>`).join('');
+  $('topCreate').style.display=can('task:create')?'':'none';
+  $('meBtn').innerHTML=avatar(me().id,32);
+  $('roleBanner').innerHTML=(state.demoRole?`<div class="role-banner">${I('shield',16)} <span>Previewing as <b>${state.demoRole}</b>. Buttons and actions follow this role's permissions.</span> <button onclick="setDemoRole('')">Back to Admin</button></div>`:'')
+    +(state.apiMode!=='off'?`<div class="role-banner api-banner">${I('alert',16)} <span>Server simulation: <b>${esc(API_MODES[state.apiMode])}</b>. Changes appear instantly and roll back if the save fails.</span> <button onclick="setApiMode('off')">Back to normal</button></div>`:'');
+  renderBadge();renderUserDD();
+}
+function renderBadge(pulse){
+  const n=state.notifications.filter(x=>!x.read).length,b=$('nbadge');if(!b)return;
+  b.style.display=n?'grid':'none';b.textContent=n;
+  if(pulse){b.classList.remove('pulse');void b.offsetWidth;b.classList.add('pulse')}
+  if($('notifDD').classList.contains('open'))renderNotifDD();
+}
+function renderNotifDD(){
+  const list=state.notifications;
+  $('notifDD').innerHTML=`<div class="dd-head"><b>Notifications</b><button onclick="markAllRead(event)">Mark all as read</button></div>
+  <div class="dd-body">${list.length?list.map(n=>`<div class="notif ${n.read?'':'unread'}" onclick="openNotif('${n.id}')">${avatar(n.userId,30)}<div><div class="t">${n.text}</div><div class="time">${ago(n.time)}</div></div></div>`).join(''):'<div class="empty-state">You\'re all caught up</div>'}</div>`;
+}
+function renderUserDD(){
+  $('userDD').innerHTML=`<div class="dd-head" style="justify-content:flex-start;gap:10px">${avatar(me().id,36)}<div><b>${esc(me().name)}</b><div class="muted" style="font-size:12px">${esc(me().email)} · ${me().role}</div></div></div>
+  <div style="padding:10px 14px;border-bottom:1px solid var(--border)" onclick="event.stopPropagation()"><label style="font-size:12px;font-weight:600;color:var(--muted)">Preview the app as role</label>
+    <select class="input" style="margin-top:6px" onchange="setDemoRole(this.value)">${ROLE_NAMES.map(r=>opt(r===me().role?'':r,r+(r===me().role?' (you)':''),state.demoRole||'')).join('')}</select></div>
+  <div style="padding:10px 14px;border-bottom:1px solid var(--border)" onclick="event.stopPropagation()"><label style="font-size:12px;font-weight:600;color:var(--muted)">Simulate the server (test loading, errors, rollback)</label>
+    <select class="input" style="margin-top:6px" onchange="setApiMode(this.value)">${Object.entries(API_MODES).map(([k,l])=>opt(k,l,state.apiMode)).join('')}</select></div>
+  <button class="menu-item" onclick="openShortcuts()">${I('kbd',16)} Keyboard shortcuts <kbd style="margin-left:auto">?</kbd></button>
+  <button class="menu-item" onclick="toggleTheme()">${I('moon',16)} Toggle dark mode</button>
+  <button class="menu-item" onclick="logout()" style="color:var(--red)">${I('logout',16)} Sign out</button>`;
+}
+function toggleDD(id,e){e.stopPropagation();const el=$(id),open=!el.classList.contains('open');closeDDs();if(open){if(id==='notifDD')renderNotifDD();el.classList.add('open')}}
+function closeDDs(){document.querySelectorAll('.dropdown.open').forEach(d=>d.classList.remove('open'))}
+function markAllRead(e){e.stopPropagation();state.notifications.forEach(n=>n.read=true);renderBadge();renderNotifDD()}
+function openNotif(id){const n=state.notifications.find(x=>x.id===id);n.read=true;renderBadge();closeDDs();if(n.taskId){const t=task(n.taskId);if(t){if(t.projectId!==state.projectId){state.projectId=t.projectId;renderAll()}openTask(t.id)}}}
+function setDemoRole(r){state.demoRole=r||null;closeDDs();renderAll();toast(r?`Now previewing as <b>${r}</b>`:'Back to your Admin view')}
+function applyTheme(t){document.documentElement.dataset.theme=t==='dark'?'dark':''}
+function toggleTheme(){const t=document.documentElement.dataset.theme==='dark'?'':'dark';applyTheme(t);local.set('tf-theme',t);closeDDs()}
+function toggleSidebar(){if(innerWidth<=860){$('sidebar').classList.toggle('open');return}const s=document.querySelector('.shell');if(!s)return;s.classList.toggle('collapsed');local.set('tf-collapsed',s.classList.contains('collapsed')?'1':'')}
+function switchProject(id){state.projectId=id;state.board={...DEFAULTS.board};state.table={...DEFAULTS.tasks};renderAll();writeURL()}
+
+/* ---------- global search ---------- */
+function onSearch(){
+  const q=$('gsearch').value.trim().toLowerCase(),pop=$('searchPop');
+  if(!q){pop.innerHTML='<div class="sr-sec">Tip</div><div class="sr-item muted">Type a task key (TF-107), a title or a project name</div>';pop.classList.add('open');return}
+  const ts=state.tasks.filter(t=>t.key.toLowerCase().includes(q)||t.title.toLowerCase().includes(q)).slice(0,7);
+  const ps=state.projects.filter(p=>p.name.toLowerCase().includes(q)||p.key.toLowerCase().includes(q)).slice(0,3);
+  pop.innerHTML=(ts.length?`<div class="sr-sec">Tasks</div>`+ts.map(t=>`<div class="sr-item" onmousedown="event.preventDefault();searchGo('t','${t.id}')">${typeI(t.type)}<span class="key">${t.key}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</span>${statusB(t.status)}</div>`).join(''):'')
+   +(ps.length?`<div class="sr-sec">Projects</div>`+ps.map(p=>`<div class="sr-item" onmousedown="event.preventDefault();searchGo('p','${p.id}')"><span class="proj-key" style="width:22px;height:22px;font-size:9px;border-radius:6px;background:${p.color}">${p.key}</span>${esc(p.name)}</div>`).join(''):'')
+   ||'<div class="sr-item muted">No results for "'+esc(q)+'"</div>';
+  pop.classList.add('open');
+}
+function searchGo(kind,id){
+  $('searchPop').classList.remove('open');$('gsearch').blur();$('gsearch').value='';
+  if(kind==='t'){const t=task(id);if(t.projectId!==state.projectId){state.projectId=t.projectId;renderAll()}openTask(id)}
+  else{switchProject(id);location.hash='#/board'}
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.pop-anchor'))closeDDs();if(!e.target.closest('.search-wrap')&&$('searchPop'))$('searchPop').classList.remove('open')});
+/* ---------- keyboard shortcuts ---------- */
+const SHORTCUTS=[
+  ['Search',['/']],['New task',['C']],['Show this help',['?']],['Close dialog or menu',['Esc']],['Collapse sidebar',['[']],
+  ['Go to Dashboard',['G','D']],['Go to Projects',['G','P']],['Go to Board',['G','B']],['Go to Sprints',['G','S']],
+  ['Go to Tasks',['G','T']],['Go to Team & roles',['G','M']],['Go to Activity',['G','A']],
+  ['Board: move between cards',['←','↑','→','↓']],['Board: move card to next column',['Shift','→']],
+  ['Board: move card to previous column',['Shift','←']],['Board: open the focused card',['Enter']],
+];
+function openShortcuts(){
+  closeDDs();
+  openModal(`<div class="modal" style="max-width:680px"><div class="modal-head"><h3>Keyboard shortcuts</h3><button class="icon-btn" aria-label="Close" onclick="closeModal()">${I('x')}</button></div>
+  <div class="modal-body"><div class="sc-grid">${SHORTCUTS.map(([l,k])=>`<div class="sc-row"><span>${l}</span><span>${k.map(x=>`<kbd>${x}</kbd>`).join('')}</span></div>`).join('')}</div>
+  <p class="muted" style="font-size:12px;margin-top:14px">"G then D" means press G, release it, then press D. Shortcuts are paused while you type in a field.</p></div></div>`);
+}
+const GO={d:'dashboard',p:'projects',b:'board',s:'sprints',t:'tasks',m:'team',a:'activity'};
+let gAt=0;
+document.addEventListener('keydown',e=>{
+  if(!state.authed)return;
+  if(e.key==='Escape'){if($('modal-root').innerHTML)closeModal();closeDDs();return}
+  const typing=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)||document.activeElement.isContentEditable;
+  if(typing||e.ctrlKey||e.metaKey||e.altKey||$('modal-root').innerHTML)return;
+  const k=e.key.toLowerCase();
+  if(gAt&&Date.now()-gAt<1200&&GO[k]){e.preventDefault();gAt=0;location.hash='#/'+GO[k];return}
+  gAt=0;
+  if(e.key==='/'){e.preventDefault();$('gsearch').focus()}
+  else if(e.key==='?'){e.preventDefault();openShortcuts()}
+  else if(k==='c'&&!e.shiftKey){e.preventDefault();openCreateTask('todo')}
+  else if(k==='g'&&!e.shiftKey)gAt=Date.now();
+  else if(e.key==='['){e.preventDefault();toggleSidebar()}
+});
+
+/* ---------- URL state: filters, sort and page live in the URL (shareable, survive refresh) ---------- */
+const DEFAULTS={
+  board:{q:'',assignee:'',priority:'',type:''},
+  tasks:{q:'',status:'',priority:'',assignee:'',type:'',sprint:'',sort:'key',dir:1,page:1,size:8},
+  activity:{user:'',type:''},
+};
+const SORT_KEYS=['key','title','status','priority','assignee','sprint','points','due'],PAGE_SIZES=[5,8,15,25],ACT_TYPES=['task','sprint','project','comment','user'];
+function readURL(){
+  const raw=location.hash.replace(/^#\/?/,''),[r,qs]=raw.split('?'),p=new URLSearchParams(qs||'');
+  // validate every value at the boundary (the real app does this with Zod); invalid values fall back to defaults
+  const g=(k,ok)=>{const v=p.get(k);return v!=null&&ok(v)?v:''};
+  const isUser=v=>v==='none'||state.users.some(u=>u.id===v);
+  const pid=g('project',v=>state.projects.some(x=>x.id===v));if(pid)state.projectId=pid;
+  state.route=ROUTES[r]?r:'dashboard';
+  if(state.route==='board')state.board={q:(p.get('q')||'').slice(0,100),assignee:g('assignee',isUser),priority:g('priority',v=>PRIORITIES.includes(v)),type:g('type',v=>TYPES.includes(v))};
+  if(state.route==='tasks')state.table={q:(p.get('q')||'').slice(0,100),status:g('status',v=>STATUS_ORDER.includes(v)),priority:g('priority',v=>PRIORITIES.includes(v)),
+    type:g('type',v=>TYPES.includes(v)),assignee:g('assignee',isUser),sprint:g('sprint',v=>v==='backlog'||state.sprints.some(s=>s.id===v&&s.projectId===state.projectId)),
+    sort:g('sort',v=>SORT_KEYS.includes(v))||'key',dir:p.get('dir')==='desc'?-1:1,page:Math.max(1,parseInt(p.get('page'),10)||1),size:PAGE_SIZES.includes(+p.get('size'))?+p.get('size'):8};
+  if(state.route==='activity')state.actFilter={user:g('user',v=>state.users.some(u=>u.id===v)),type:g('type',v=>ACT_TYPES.includes(v))};
+}
+function urlFor(route){
+  const p=new URLSearchParams({project:state.projectId});
+  const add=(obj,def)=>Object.entries(obj).forEach(([k,v])=>{if(k==='dir'){if(v===-1)p.set('dir','desc')}else if(v!==''&&v!==def[k])p.set(k,v)});
+  if(route==='board')add(state.board,DEFAULTS.board);
+  if(route==='tasks')add(state.table,DEFAULTS.tasks);
+  if(route==='activity')add(state.actFilter,DEFAULTS.activity);
+  return '#/'+route+'?'+p.toString();
+}
+function writeURL(){if(!state.authed)return;const u=urlFor(state.route);if(location.hash!==u)history.replaceState(null,'',u)}
+function copyLink(){
+  const u=location.href,done=()=>toast('Link copied. Anyone who opens it sees these exact filters.');
+  try{navigator.clipboard.writeText(u).then(done,()=>window.prompt('Copy this link',u))}catch(e){window.prompt('Copy this link',u)}
+}
+
+/* ---------- routing + page loading (loading → success | error) ---------- */
+const ROUTES={dashboard:viewDashboard,projects:viewProjects,board:viewBoard,sprints:viewSprints,tasks:viewTasks,team:viewTeam,activity:viewActivity};
+window.addEventListener('hashchange',()=>{
+  if(!state.authed)return;
+  const prev=state.route,prevP=state.projectId;readURL();$('sidebar').classList.remove('open');closeDDs();
+  renderChrome();if(state.route!==prev||state.projectId!==prevP)loadRoute();else renderMain();
+  writeURL();window.scrollTo(0,0);
+});
+let loadSeq=0;
+function loadRoute(){
+  const seq=++loadSeq;state.view={status:'loading'};renderMain();
+  apiCall('GET').then(()=>{if(seq!==loadSeq)return;state.view={status:'success'};renderMain()})
+    .catch(error=>{if(seq!==loadSeq)return;state.view={status:'error',error};renderMain()});
+}
+function renderAll(){renderChrome();renderMain()}
+function renderMain(){
+  const v=state.view,m=$('main');if(!m)return;
+  if(v.status==='loading'){m.innerHTML=skeletonView();return}
+  if(v.status==='error'){m.innerHTML=errorView(v.error);return}
+  m.innerHTML=ROUTES[state.route]();if(state.route==='board')renderColumns();if(state.route==='tasks')renderTable();
+}
+function skeletonView(){
+  const b=(w,h,x='')=>`<div class="sk" style="width:${w};height:${h}px;${x}"></div>`;
+  const statSk=`<div class="card">${b('55%',12,'margin-bottom:14px')}${b('35%',28)}</div>`;
+  return`<div aria-busy="true" aria-label="Loading page">${b('220px',26,'margin-bottom:8px')}${b('min(340px,80%)',14,'margin-bottom:22px')}
+    <div class="stats">${statSk.repeat(4)}</div>
+    <div class="card">${Array.from({length:6},(_,i)=>b(i%2?'82%':'100%',14,'margin-bottom:14px')).join('')}</div></div>`;
+}
+function errorView(err){
+  const name=(NAV.find(n=>n[0]===state.route)||[,'this page'])[1];
+  return`<div class="card error-state" role="alert"><div class="ic-wrap">${I('alert',22)}</div><h3>Couldn't load ${esc(name)}</h3>
+    <p class="muted" style="margin:6px 0 18px">The server answered <b>${esc(err&&err.message||'an unknown error')}</b>. Nothing was lost. Try again.</p>
+    <button class="btn primary" onclick="loadRoute()">${I('refresh',16)} Retry</button>
+    ${state.apiMode!=='off'?`<button class="btn" style="margin-left:6px" onclick="setApiMode('off')">Turn off server simulation</button>`:''}</div>`;
+}
+
+/* ---------- dashboard ---------- */
+function viewDashboard(){
+  const p=curProject(),ts=projTasks(),sp=activeSprint();
+  const open=ts.filter(t=>t.status!=='done').length,prog=ts.filter(t=>t.status==='inprogress').length,done=ts.filter(t=>t.status==='done').length,over=ts.filter(isOverdue).length;
+  const spT=sp?ts.filter(t=>t.sprintId===sp.id):[];
+  const statusBars=STATUS_ORDER.map(s=>{const n=(sp?spT:ts).filter(t=>t.status===s).length,tot=(sp?spT:ts).length||1;return`<div class="bar-row"><span>${STATUS[s]}</span><div class="bar"><span style="width:${n/tot*100}%;background:${{todo:'#9aa1ad',inprogress:'var(--blue)',review:'var(--purple)',done:'var(--green)'}[s]}"></span></div><b style="text-align:right">${n}</b></div>`}).join('');
+  const load=state.users.filter(u=>u.role!=='Viewer').map(u=>({u,n:ts.filter(t=>t.assignee===u.id&&t.status!=='done').length})).sort((a,b)=>b.n-a.n);
+  const maxL=Math.max(1,...load.map(x=>x.n));
+  const mine=ts.filter(t=>t.assignee===me().id&&t.status!=='done');
+  const acts=state.activity.filter(a=>a.projectId===state.projectId).slice(0,6);
+  return`
+  <div class="page-head"><div><h1>Dashboard</h1><p class="sub">${esc(p.name)} · ${sp?`${sp.name} · ${daysLeft(sp)} days left`:'No active sprint'}</p></div></div>
+  <div class="stats">
+    ${stat('Open tasks',open,'list',`${ts.length} total in project`)}
+    ${stat('In progress',prog,'trend','Being worked on now')}
+    ${stat('Completed',done,'check',`${ts.length?Math.round(done/ts.length*100):0}% of all tasks`)}
+    ${stat('Overdue',over,'alert',over?'<span class="overdue">Needs attention</span>':'All on track')}
+  </div>
+  <div class="grid-2">
+    <div class="card"><div class="card-head"><h3>Sprint burndown</h3><span class="muted">${sp?`${sp.name} · ${fmt(sp.start)} – ${fmt(sp.end)}`:''}</span></div>
+      ${sp?burndown(sp):'<div class="empty-state">Start a sprint to see its burndown.</div>'}</div>
+    <div class="card"><div class="card-head"><h3>${sp?'Sprint tasks by status':'Tasks by status'}</h3></div>${statusBars}
+      <h4 style="margin-top:20px">Open tasks per person</h4>
+      ${load.map(x=>`<div class="bar-row" style="grid-template-columns:110px 1fr 36px"><span style="display:flex;gap:6px;align-items:center;white-space:nowrap;overflow:hidden">${avatar(x.u.id,18)}${esc(x.u.name.split(' ')[0])}</span><div class="bar"><span style="width:${x.n/maxL*100}%;background:${x.u.color}"></span></div><b style="text-align:right">${x.n}</b></div>`).join('')}
+    </div>
+  </div>
+  <div class="grid-2 even">
+    <div class="card"><div class="card-head"><h3>My open tasks</h3><span class="muted">${mine.length}</span></div>
+      ${mine.length?mine.map(t=>`<div class="list-row" onclick="openTask('${t.id}')">${typeI(t.type)}<span class="key">${t.key}</span><span class="title">${esc(t.title)}</span>${statusB(t.status)}</div>`).join(''):'<div class="muted">Nothing assigned to you in this project.</div>'}
+    </div>
+    <div class="card"><div class="card-head"><h3>Recent activity</h3><a class="link" href="#/activity" style="font-size:13px">View all</a></div>
+      ${acts.map(a=>`<div class="act">${avatar(a.userId,26)}<div><div><b>${esc(user(a.userId).name)}</b> ${a.text}</div><div class="time">${ago(a.time)}</div></div></div>`).join('')||'<div class="muted">No activity yet.</div>'}
+    </div>
+  </div>`;
+}
+const stat=(l,v,ic,d)=>`<div class="card stat"><div class="label">${I(ic,15)} ${l}</div><div class="value">${v}</div><div class="delta">${d}</div></div>`;
+function burndown(sp){
+  const ts=state.tasks.filter(t=>t.sprintId===sp.id),total=sum(ts,t=>t.points)||1,doneP=sum(ts.filter(t=>t.status==='done'),t=>t.points);
+  const days=Math.max(1,Math.round((sp.end-sp.start)/DAY)),el=Math.max(0,Math.min(days,Math.round((T0-sp.start)/DAY)));
+  const rem=total-doneP,actual=[];
+  for(let i=0;i<=el;i++){const f=el?i/el:0;actual.push(Math.round(total-(total-rem)*Math.pow(f,1.35)))}
+  const W=600,H=230,pl=34,pr=14,pt=12,pb=28,x=i=>pl+(W-pl-pr)*i/days,y=v=>pt+(H-pt-pb)*(1-v/total);
+  let g='';[0,.5,1].forEach(f=>{const v=Math.round(total*f);g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--border)"/><text x="${pl-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--faint)">${v}</text>`});
+  for(let i=0;i<=days;i+=Math.ceil(days/6))g+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--faint)">${fmt(sp.start+i*DAY)}</text>`;
+  const pts=actual.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
+  return`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Burndown chart">${g}
+    <line x1="${x(0)}" y1="${y(total)}" x2="${x(days)}" y2="${y(0)}" stroke="var(--faint)" stroke-dasharray="5 5" stroke-width="1.5"/>
+    <line x1="${x(el)}" x2="${x(el)}" y1="${pt}" y2="${H-pb}" stroke="var(--amber)" stroke-dasharray="2 4"/>
+    <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
+    ${actual.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"><title>${fmt(sp.start+i*DAY)}: ${v} pts left</title></circle>`).join('')}
+  </svg>
+  <div class="chart-legend"><span><i style="background:var(--accent)"></i>Remaining points (${rem} of ${total})</span><span><i style="background:var(--faint)"></i>Ideal</span><span><i style="background:var(--amber)"></i>Today</span></div>`;
+}
+
+/* ---------- projects ---------- */
+function viewProjects(){
+  return`<div class="page-head"><div><h1>Projects</h1><p class="sub">${state.projects.length} projects in this workspace</p></div>
+    <div class="page-actions">${can('project:create')?`<button class="btn primary" onclick="openCreateProject()">${I('plus',16)} New project</button>`:''}</div></div>
+  <div class="proj-grid">${state.projects.map(p=>{
+    const ts=projTasks(p.id),d=ts.filter(t=>t.status==='done').length,sp=activeSprint(p.id);
+    const members=[...new Set(ts.map(t=>t.assignee).filter(Boolean))];
+    return`<div class="card proj" onclick="switchProject('${p.id}');location.hash='#/board'">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px"><div class="proj-key" style="background:${p.color}">${p.key}</div><div><h3>${esc(p.name)}</h3><div class="muted" style="font-size:12px">${sp?`${sp.name} active`:'No active sprint'}</div></div>${p.id===state.projectId?'<span class="badge-p chip-active" style="margin-left:auto">Current</span>':''}</div>
+      <p class="muted" style="font-size:13px;min-height:40px">${esc(p.desc)}</p>
+      <div class="progress"><span style="width:${ts.length?d/ts.length*100:0}%"></span></div>
+      <div style="display:flex;align-items:center;font-size:12px" class="muted"><span>${d} of ${ts.length} tasks done</span><span class="spacer"></span><span class="stack">${members.slice(0,4).map(m=>avatar(m,24)).join('')}</span></div>
+    </div>`}).join('')}</div>`;
+}
+function openCreateProject(){
+  openModal(`<div class="modal"><div class="modal-head"><h3>New project</h3><button class="icon-btn" onclick="closeModal()">${I('x')}</button></div>
+  <div class="modal-body">
+    <div class="field"><label>Project name</label><input class="input" id="npName" placeholder="e.g. Customer Portal" oninput="$('enpName').textContent='';if(!$('npKey').dataset.touched)$('npKey').value=this.value.split(/\\s+/).map(w=>w[0]||'').join('').toUpperCase().slice(0,4)"><div class="err" id="enpName"></div></div>
+    <div class="field"><label>Key (2–5 capital letters, used in task IDs)</label><input class="input" id="npKey" maxlength="5" oninput="this.dataset.touched=1;this.value=this.value.toUpperCase();$('enpKey').textContent=''"><div class="err" id="enpKey"></div></div>
+    <div class="field"><label>Description</label><textarea class="input" id="npDesc" rows="3"></textarea></div>
+  </div>
+  <div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="createProject()">Create project</button></div></div>`);
+  setTimeout(()=>{const el=$('npName');if(el)el.focus()},50);
+}
+function createProject(){
+  const n=$('npName').value.trim(),k=$('npKey').value.trim();let ok=true;
+  if(n.length<3){$('enpName').textContent='Name must be at least 3 characters';ok=false}
+  if(!/^[A-Z]{2,5}$/.test(k)){$('enpKey').textContent='Use 2–5 capital letters';ok=false}
+  else if(state.projects.some(p=>p.key===k)){$('enpKey').textContent='This key is already used';ok=false}
+  if(!ok)return;
+  const p={id:'p'+uid(),key:k,name:n,desc:$('npDesc').value.trim()||'No description yet.',color:COLORS[state.projects.length%COLORS.length],seq:100};
+  state.projects.push(p);state.sprints.push({id:'s'+uid(),projectId:p.id,name:'Sprint 1',goal:'First sprint',start:dOff(1),end:dOff(15),status:'planned'});
+  state.projectId=p.id;log('project',`created project <b>${esc(n)}</b>`);closeModal();renderAll();toast(`Project <b>${esc(n)}</b> created`);
+}
+
+/* ---------- board ---------- */
+function viewBoard(){
+  const sp=activeSprint(),p=curProject();
+  if(!sp)return`<div class="page-head"><div><h1>Board</h1><p class="sub">${esc(p.name)}</p></div></div>
+    <div class="card empty-state"><h3>No active sprint</h3><p>Start a sprint to see its tasks on the board.</p><br><a class="btn primary" href="#/sprints">Go to sprints</a></div>`;
+  const assignees=[...new Set(projTasks().map(t=>t.assignee).filter(Boolean))];
+  return`<div class="page-head"><div><h1>${esc(sp.name)} board</h1><p class="sub">${esc(sp.goal)} · ${fmt(sp.start)} – ${fmt(sp.end)} · <b>${daysLeft(sp)} days left</b></p></div>
+    <div class="page-actions">${can('sprint:manage')?`<button class="btn" onclick="completeSprint('${sp.id}')">Complete sprint</button>`:''}${can('task:create')?`<button class="btn primary" onclick="openCreateTask('todo')">${I('plus',16)} Add task</button>`:''}</div></div>
+  <div class="filters">
+    <input class="input search" placeholder="Filter cards…" aria-label="Filter cards" value="${esc(state.board.q)}" oninput="bf('q',this.value)">
+    <select class="input" aria-label="Assignee" onchange="bf('assignee',this.value)">${opt('','All assignees',state.board.assignee)}${opt('none','Unassigned',state.board.assignee)}${assignees.map(a=>opt(a,user(a).name,state.board.assignee)).join('')}</select>
+    <select class="input" aria-label="Priority" onchange="bf('priority',this.value)">${opt('','All priorities',state.board.priority)}${PRIORITIES.map(x=>opt(x,x,state.board.priority)).join('')}</select>
+    <select class="input" aria-label="Type" onchange="bf('type',this.value)">${opt('','All types',state.board.type)}${TYPES.map(x=>opt(x,x,state.board.type)).join('')}</select>
+    <span id="boardClear"></span>
+    <button class="btn sm" onclick="copyLink()" title="Filters are saved in the URL. Share this link to show the same view.">${I('link',14)} Copy link</button>
+  </div>
+  ${can('task:move')?`<p class="muted" style="font-size:12px;margin:-6px 0 12px">Drag cards, or focus a card and press <kbd>Shift</kbd> + <kbd>→</kbd> / <kbd>←</kbd> to move it. Press <kbd>?</kbd> for all shortcuts.</p>`:`<div class="note">Read-only: the <b>${role()}</b> role can't move cards. Switch role from your avatar menu.</div>`}
+  <div class="board" id="board"></div>`;
+}
+function bf(k,v){state.board[k]=v;renderColumns()}
+function clearBoard(){state.board={...DEFAULTS.board};renderMain();writeURL()}
+function boardTasks(){
+  const sp=activeSprint(),f=state.board,q=f.q.toLowerCase();
+  return projTasks().filter(t=>t.sprintId===sp.id&&(!q||t.title.toLowerCase().includes(q)||t.key.toLowerCase().includes(q))
+    &&(!f.assignee||(f.assignee==='none'?!t.assignee:t.assignee===f.assignee))&&(!f.priority||t.priority===f.priority)&&(!f.type||t.type===f.type));
+}
+function renderColumns(flashId){
+  const b=$('board');if(!b)return;const ts=boardTasks();
+  b.innerHTML=STATUS_ORDER.map(s=>{
+    const list=ts.filter(t=>t.status===s).sort((a,c)=>a.order-c.order);
+    return`<section class="col"><div class="col-head"><span class="dot ${s}"></span><b>${STATUS[s]}</b><span class="count">${list.length}</span><span class="pts">${sum(list,t=>t.points)} pts</span></div>
+      <div class="col-body" data-status="${s}" ondragover="onDragOver(event)" ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('over')" ondrop="event.preventDefault()">${list.map(card).join('')}</div>
+      ${s==='todo'&&can('task:create')?`<button class="add-card" onclick="openCreateTask('todo')">+ Add task</button>`:''}</section>`}).join('');
+  if(flashId){const el=b.querySelector(`[data-id="${flashId}"]`);if(el)el.classList.add('flash')}
+  const f=state.board,c=$('boardClear');
+  if(c)c.innerHTML=f.q||f.assignee||f.priority||f.type?`<button class="btn sm" onclick="clearBoard()">Clear filters</button>`:'';
+  writeURL();
+}
+function safeRenderColumns(){if(!state.drag)renderColumns()}   // never re-render under a card that is being dragged
+function card(t){
+  const m=can('task:move')&&!t.pending,sd=t.subtasks.filter(s=>s.done).length;
+  return`<article class="kcard ${can('task:move')?'':'locked'} ${t.pending?'saving':''}" tabindex="0" role="button" draggable="${m}" data-id="${t.id}"
+    aria-label="${t.key} ${esc(t.title)}. ${STATUS[t.status]}, ${t.priority} priority${t.pending?', saving':''}"
+    ondragstart="onDragStart(event)" ondragend="onDragEnd(event)" onclick="openTask('${t.id}')" onkeydown="cardKey(event,'${t.id}')">
+    <div class="kc-top">${typeI(t.type)}<span class="key">${t.key}</span>${prio(t.priority)}</div>
+    <div class="kc-title">${esc(t.title)}</div>
+    <div class="kc-foot"><span class="pill">${t.points} pts</span>${dueLabel(t)}${t.subtasks.length?`<span class="meta" title="Subtasks done">${I('check',12)} ${sd}/${t.subtasks.length}</span>`:''}${t.comments.length?`<span class="meta">${I('msg',12)} ${t.comments.length}</span>`:''}<span class="spacer"></span>${avatar(t.assignee,22)}</div>
+  </article>`;
+}
+function focusCard(id){const el=document.querySelector(`.kcard[data-id="${id}"]`);if(el)el.focus()}
+function cardKey(e,id){
+  if(e.target!==e.currentTarget)return;
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();openTask(id);return}
+  if(e.shiftKey&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){e.preventDefault();kbMove(id,e.key==='ArrowRight'?1:-1);return}
+  const d={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[e.key];if(!d)return;e.preventDefault();
+  const cols=[...document.querySelectorAll('#board .col-body')].map(b=>[...b.querySelectorAll('.kcard')]);
+  let ci=cols.findIndex(c=>c.some(x=>x.dataset.id===id));if(ci<0)return;let ri=cols[ci].findIndex(x=>x.dataset.id===id);
+  if(d[0]){let n=ci+d[0];while(cols[n]&&!cols[n].length)n+=d[0];if(!cols[n])return;ci=n;ri=Math.min(ri,cols[n].length-1)}
+  else ri=Math.max(0,Math.min(cols[ci].length-1,ri+d[1]));
+  cols[ci][ri].focus();
+}
+function kbMove(id,dir){
+  const t=task(id);if(!t||!can('task:move'))return;
+  if(t.pending)return toast(`<b>${t.key}</b> is still saving`,'');
+  const j=STATUS_ORDER.indexOf(t.status)+dir;if(j<0||j>=STATUS_ORDER.length)return;
+  const from=t.status,prevOrder=t.order;t.status=STATUS_ORDER[j];t.order=-1;
+  persistMove(id,from,prevOrder,true);
+}
+/* optimistic update: the card moves at once, the save runs in the background, a failed save puts it back */
+function persistMove(id,from,prevOrder,refocus){
+  const t=task(id),to=t.status;
+  if(to===from){renderColumns();if(refocus)focusCard(id);return}
+  t.pending=true;renderColumns();if(refocus)focusCard(id);
+  apiCall('MUTATE').then(()=>{
+    t.pending=false;log('task',`moved <b>${t.key}</b> from ${STATUS[from]} to ${STATUS[to]}`,t.id);
+    safeRenderColumns();if(refocus)focusCard(id);
+    toast(`Moved <b>${t.key}</b> to ${STATUS[to]} · team notified in real time`,'live');
+  }).catch(err=>{
+    if(t.status===to){t.status=from;t.order=prevOrder}t.pending=false;
+    safeRenderColumns();const el=document.querySelector(`.kcard[data-id="${id}"]`);if(el)el.classList.add('reverted');if(refocus)focusCard(id);
+    toast(`Couldn't move <b>${t.key}</b> to ${STATUS[to]} (${esc(err.message)}). It went back to ${STATUS[from]}.`,'error');
+  });
+}
+function onDragStart(e){
+  const el=e.currentTarget,t=task(el.dataset.id);if(!t||t.pending){e.preventDefault();return}
+  state.drag={id:t.id,from:t.status,order:t.order};
+  e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',el.dataset.id);
+  requestAnimationFrame(()=>el.classList.add('dragging'));
+}
+function onDragOver(e){
+  if(!state.drag)return;e.preventDefault();
+  const body=e.currentTarget,el=document.querySelector('.kcard.dragging');if(!el)return;
+  const after=[...body.querySelectorAll('.kcard:not(.dragging)')].reduce((best,c)=>{const r=c.getBoundingClientRect(),o=e.clientY-r.top-r.height/2;return o<0&&o>best.o?{o,el:c}:best},{o:-Infinity,el:null}).el;
+  if(after)body.insertBefore(el,after);else body.appendChild(el);
+  document.querySelectorAll('.col-body').forEach(b=>b.classList.toggle('over',b===body));
+}
+function onDragEnd(e){
+  e.currentTarget.classList.remove('dragging');
+  if(!state.drag)return;const{id,from,order}=state.drag;state.drag=null;
+  document.querySelectorAll('.col-body').forEach(b=>{b.classList.remove('over');[...b.querySelectorAll('.kcard')].forEach((c,i)=>{const t=task(c.dataset.id);t.status=b.dataset.status;t.order=i})});
+  persistMove(id,from,order,false);
+}
+
+/* ---------- sprints ---------- */
+function viewSprints(){
+  const sps=projSprints(),backlog=projTasks().filter(t=>!t.sprintId),open=sps.filter(s=>s.status!=='completed');
+  const order={active:0,planned:1,completed:2};
+  return`<div class="page-head"><div><h1>Sprints</h1><p class="sub">${esc(curProject().name)} · plan, start and complete sprints</p></div>
+    <div class="page-actions">${can('sprint:manage')?`<button class="btn primary" onclick="openCreateSprint()">${I('plus',16)} New sprint</button>`:''}</div></div>
+  ${[...sps].sort((a,b)=>order[a.status]-order[b.status]||a.start-b.start).map(s=>{
+    const ts=state.tasks.filter(t=>t.sprintId===s.id),d=ts.filter(t=>t.status==='done'),pts=sum(ts,t=>t.points),dp=sum(d,t=>t.points);
+    return`<div class="card sprint"><div class="sprint-head"><h3>${esc(s.name)}</h3><span class="badge-p chip-${s.status}">${s.status[0].toUpperCase()+s.status.slice(1)}</span>
+      <span class="muted" style="font-size:13px">${I('cal',13)} ${fmt(s.start)} – ${fmt(s.end)}${s.status==='active'?` · ${daysLeft(s)} days left`:''}</span><span class="spacer"></span>
+      ${can('sprint:manage')&&s.status==='planned'?`<button class="btn sm" onclick="startSprint('${s.id}')">Start sprint</button>`:''}
+      ${can('sprint:manage')&&s.status==='active'?`<button class="btn sm" onclick="completeSprint('${s.id}')">Complete sprint</button><a class="btn sm primary" href="#/board">Open board</a>`:''}</div>
+      <p class="muted" style="margin-top:4px">${esc(s.goal)}</p>
+      <div class="progress"><span style="width:${pts?dp/pts*100:0}%;${s.status==='completed'?'background:var(--green)':''}"></span></div>
+      <div class="muted" style="font-size:12px">${d.length} of ${ts.length} tasks done · ${dp} / ${pts} points</div>
+      ${s.status!=='completed'&&ts.length?`<div style="margin-top:10px">${ts.slice(0,5).map(t=>`<div class="list-row" onclick="openTask('${t.id}')">${typeI(t.type)}<span class="key">${t.key}</span><span class="title">${esc(t.title)}</span>${statusB(t.status)}${avatar(t.assignee,22)}</div>`).join('')}${ts.length>5?`<div class="muted" style="font-size:12px;padding-top:8px">+ ${ts.length-5} more · <a class="link" href="#/tasks?project=${s.projectId}&sprint=${s.id}">see all</a></div>`:''}</div>`:''}
+    </div>`}).join('')}
+  <div class="card"><div class="card-head"><h3>Backlog</h3><span class="muted">${backlog.length} tasks</span></div>
+    ${backlog.length?backlog.map(t=>`<div class="list-row" style="cursor:default">${typeI(t.type)}<span class="key">${t.key}</span><span class="title link" style="color:var(--text);font-weight:500" onclick="openTask('${t.id}')">${esc(t.title)}</span>${prio(t.priority)}
+      ${can('sprint:manage')&&open.length?`<select class="input" style="width:150px;padding:5px 26px 5px 8px;font-size:12px" onchange="moveToSprint('${t.id}',this.value)">${opt('','Move to sprint…','')}${open.map(s=>opt(s.id,s.name,'')).join('')}</select>`:''}</div>`).join(''):'<div class="muted">Backlog is empty.</div>'}
+  </div>`;
+}
+function startSprint(id){
+  const s=state.sprints.find(x=>x.id===id);
+  if(activeSprint(s.projectId))return toast('Complete the active sprint before starting another','error');
+  s.status='active';s.start=T0;s.end=dOff(14);log('sprint',`started <b>${esc(s.name)}</b>`);renderMain();toast(`<b>${esc(s.name)}</b> started`);
+}
+function completeSprint(id){
+  const s=state.sprints.find(x=>x.id===id),ts=state.tasks.filter(t=>t.sprintId===id),undone=ts.filter(t=>t.status!=='done');
+  const next=projSprints(s.projectId).find(x=>x.status==='planned');
+  undone.forEach(t=>t.sprintId=next?next.id:null);
+  s.status='completed';s.end=Math.min(s.end,T0);
+  log('sprint',`completed <b>${esc(s.name)}</b> — ${ts.length-undone.length} of ${ts.length} tasks done`);
+  renderMain();toast(`<b>${esc(s.name)}</b> completed. ${undone.length} unfinished task${undone.length===1?'':'s'} moved to ${next?esc(next.name):'the backlog'}`);
+}
+function moveToSprint(tid,sid){if(!sid)return;const t=task(tid);t.sprintId=sid;log('task',`moved <b>${t.key}</b> from Backlog to ${esc(sprintName(sid))}`,t.id);renderMain();toast(`<b>${t.key}</b> added to ${esc(sprintName(sid))}`)}
+function openCreateSprint(){
+  const n=projSprints().length+1;
+  openModal(`<div class="modal"><div class="modal-head"><h3>New sprint</h3><button class="icon-btn" onclick="closeModal()">${I('x')}</button></div>
+  <div class="modal-body">
+    <div class="field"><label>Name</label><input class="input" id="nsName" value="Sprint ${n}" oninput="$('ensName').textContent=''"><div class="err" id="ensName"></div></div>
+    <div class="field"><label>Sprint goal</label><input class="input" id="nsGoal" placeholder="What should this sprint deliver?"></div>
+    <div class="row"><div class="field"><label>Start date</label><input class="input" type="date" id="nsStart" value="${iso(dOff(7))}"></div>
+    <div class="field"><label>Duration</label><select class="input" id="nsDur">${opt(7,'1 week',14)}${opt(14,'2 weeks',14)}${opt(21,'3 weeks',14)}</select></div></div>
+  </div><div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="createSprint()">Create sprint</button></div></div>`);
+}
+function createSprint(){
+  const n=$('nsName').value.trim();if(!n){$('ensName').textContent='Enter a sprint name';return}
+  const st=new Date($('nsStart').value+'T00:00').getTime()||dOff(7);
+  state.sprints.push({id:'s'+uid(),projectId:state.projectId,name:n,goal:$('nsGoal').value.trim()||'No goal set',start:st,end:st+(+$('nsDur').value)*DAY,status:'planned'});
+  log('sprint',`created <b>${esc(n)}</b>`);closeModal();renderMain();toast(`<b>${esc(n)}</b> created`);
+}
+
+/* ---------- tasks table ---------- */
+function viewTasks(){
+  const f=state.table,assignees=state.users.filter(u=>u.role!=='Viewer');
+  return`<div class="page-head"><div><h1>Tasks & issues</h1><p class="sub">${esc(curProject().name)} · search, filter, sort and paginate</p></div>
+    <div class="page-actions">${can('task:create')?`<button class="btn primary" onclick="openCreateTask()">${I('plus',16)} New task</button>`:''}</div></div>
+  <div class="filters">
+    <input class="input search" placeholder="Search by key or title…" aria-label="Search tasks" value="${esc(f.q)}" oninput="tf('q',this.value)">
+    <select class="input" aria-label="Status" onchange="tf('status',this.value)">${opt('','All statuses',f.status)}${STATUS_ORDER.map(s=>opt(s,STATUS[s],f.status)).join('')}</select>
+    <select class="input" aria-label="Priority" onchange="tf('priority',this.value)">${opt('','All priorities',f.priority)}${PRIORITIES.map(x=>opt(x,x,f.priority)).join('')}</select>
+    <select class="input" aria-label="Type" onchange="tf('type',this.value)">${opt('','All types',f.type)}${TYPES.map(x=>opt(x,x,f.type)).join('')}</select>
+    <select class="input" aria-label="Assignee" onchange="tf('assignee',this.value)">${opt('','All assignees',f.assignee)}${opt('none','Unassigned',f.assignee)}${assignees.map(u=>opt(u.id,u.name,f.assignee)).join('')}</select>
+    <select class="input" aria-label="Sprint" onchange="tf('sprint',this.value)">${opt('','All sprints',f.sprint)}${opt('backlog','Backlog',f.sprint)}${projSprints().map(s=>opt(s.id,s.name,f.sprint)).join('')}</select>
+    <button class="btn sm" onclick="copyLink()" title="Filters, sort and page are saved in the URL. Share this link to show the same view.">${I('link',14)} Copy link</button>
+  </div>
+  <div class="card table-card"><div style="overflow-x:auto"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div><div class="pager" id="pager"></div></div>`;
+}
+function tf(k,v){state.table[k]=v;state.table.page=1;renderTable()}
+function setPage(n){state.table.page=n;renderTable()}
+const COLS=[['key','Key'],['title','Title'],['status','Status'],['priority','Priority'],['assignee','Assignee'],['sprint','Sprint'],['points','Points'],['due','Due']];
+function sortBy(k){const f=state.table;if(f.sort===k)f.dir*=-1;else{f.sort=k;f.dir=1}renderTable()}
+function renderTable(){
+  const f=state.table,q=f.q.toLowerCase();
+  let rows=projTasks().filter(t=>(!q||t.title.toLowerCase().includes(q)||t.key.toLowerCase().includes(q))&&(!f.status||t.status===f.status)&&(!f.priority||t.priority===f.priority)&&(!f.type||t.type===f.type)
+    &&(!f.assignee||(f.assignee==='none'?!t.assignee:t.assignee===f.assignee))&&(!f.sprint||(f.sprint==='backlog'?!t.sprintId:t.sprintId===f.sprint)));
+  const val={key:t=>+t.key.split('-')[1],title:t=>t.title.toLowerCase(),status:t=>STATUS_ORDER.indexOf(t.status),priority:t=>PRIORITIES.indexOf(t.priority),assignee:t=>t.assignee?user(t.assignee).name:'~',sprint:t=>sprintName(t.sprintId),points:t=>t.points,due:t=>t.due||'9999'}[f.sort];
+  rows.sort((a,b)=>{const x=val(a),y=val(b);return(x>y?1:x<y?-1:0)*f.dir});
+  const total=rows.length,pages=Math.max(1,Math.ceil(total/f.size));if(f.page>pages)f.page=pages;
+  const s=(f.page-1)*f.size,pageRows=rows.slice(s,s+f.size);
+  $('thead').innerHTML='<tr>'+COLS.map(([k,l])=>`<th class="sortable" onclick="sortBy('${k}')">${l} ${f.sort===k?(f.dir>0?'↑':'↓'):''}</th>`).join('')+'</tr>';
+  $('tbody').innerHTML=pageRows.length?pageRows.map(t=>`<tr class="click" onclick="openTask('${t.id}')">
+    <td><span style="display:inline-flex;gap:6px;align-items:center">${typeI(t.type)}<span class="key">${t.key}</span></span></td>
+    <td style="font-weight:500;max-width:340px">${esc(t.title)}</td><td>${statusB(t.status)}</td><td>${prio(t.priority)}</td>
+    <td><span style="display:inline-flex;gap:8px;align-items:center;white-space:nowrap">${avatar(t.assignee,22)}${t.assignee?esc(user(t.assignee).name):'<span class="muted">Unassigned</span>'}</span></td>
+    <td class="muted" style="white-space:nowrap">${esc(sprintName(t.sprintId))}</td><td>${t.points}</td><td style="white-space:nowrap">${dueLabel(t)||'<span class="muted">—</span>'}</td></tr>`).join('')
+    :`<tr><td colspan="8" class="empty-row">No tasks match these filters.</td></tr>`;
+  $('pager').innerHTML=`<span>Showing ${total?s+1:0}–${Math.min(s+f.size,total)} of ${total}</span>
+    <span style="display:flex;gap:10px;align-items:center"><select class="input" aria-label="Rows per page" style="width:auto;padding:5px 26px 5px 8px" onchange="tf('size',+this.value)">${PAGE_SIZES.map(n=>opt(n,n+' / page',f.size)).join('')}</select>
+    <span class="pages"><button aria-label="Previous page" ${f.page<=1?'disabled':''} onclick="setPage(${f.page-1})">‹</button>${Array.from({length:pages},(_,i)=>`<button class="${f.page===i+1?'active':''}" ${f.page===i+1?'aria-current="page"':''} onclick="setPage(${i+1})">${i+1}</button>`).join('')}<button aria-label="Next page" ${f.page>=pages?'disabled':''} onclick="setPage(${f.page+1})">›</button></span></span>`;
+  writeURL();
+}
+
+/* ---------- task create / detail ---------- */
+function openCreateTask(status='todo'){
+  if(!can('task:create'))return toast('Your role cannot create tasks','error');
+  const sp=activeSprint(),open=projSprints().filter(s=>s.status!=='completed');
+  openModal(`<div class="modal"><div class="modal-head"><h3>New task in ${esc(curProject().name)}</h3><button class="icon-btn" onclick="closeModal()">${I('x')}</button></div>
+  <div class="modal-body">
+    <div class="field"><label>Title</label><input class="input" id="ntTitle" placeholder="What needs to be done?" oninput="$('entTitle').textContent=''"><div class="err" id="entTitle"></div></div>
+    <div class="row"><div class="field"><label>Type</label><select class="input" id="ntType">${TYPES.map(x=>opt(x,x,'Story')).join('')}</select></div>
+      <div class="field"><label>Priority</label><select class="input" id="ntPrio">${PRIORITIES.map(x=>opt(x,x,'Medium')).join('')}</select></div></div>
+    <div class="row"><div class="field"><label>Assignee</label><select class="input" id="ntAssg">${opt('','Unassigned','')}${state.users.filter(u=>u.role!=='Viewer').map(u=>opt(u.id,u.name,'')).join('')}</select></div>
+      <div class="field"><label>Sprint</label><select class="input" id="ntSprint">${opt('','Backlog',sp?sp.id:'')}${open.map(s=>opt(s.id,s.name+(s.status==='active'?' (active)':''),sp?sp.id:'')).join('')}</select></div></div>
+    <div class="row"><div class="field"><label>Story points</label><select class="input" id="ntPts">${[1,2,3,5,8,13].map(n=>opt(n,n,3)).join('')}</select></div>
+      <div class="field"><label>Due date</label><input class="input" type="date" id="ntDue"></div></div>
+    <div class="field"><label>Description</label><textarea class="input" id="ntDesc" rows="3" placeholder="Add details, acceptance criteria…"></textarea></div>
+  </div><div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="createTask('${status}')">Create task</button></div></div>`);
+  setTimeout(()=>{const el=$('ntTitle');if(el)el.focus()},50);
+}
+function createTask(status){
+  const title=$('ntTitle').value.trim();
+  if(title.length<3){$('entTitle').textContent='Title must be at least 3 characters';return}
+  const p=curProject();p.seq++;
+  const t={id:'t'+uid(),key:p.key+'-'+p.seq,projectId:p.id,title,type:$('ntType').value,status,priority:$('ntPrio').value,assignee:$('ntAssg').value||null,sprintId:$('ntSprint').value||null,points:+$('ntPts').value,due:$('ntDue').value||null,order:-1,desc:$('ntDesc').value.trim(),comments:[],subtasks:[],createdAt:Date.now()};
+  state.tasks.push(t);log('task',`created <b>${t.key}</b> ${esc(title)}`,t.id);
+  closeModal();renderMain();if(state.route==='board')renderColumns(t.id);
+  toast(`<b>${t.key}</b> created${t.sprintId?'':' in the backlog'}`);
+}
+function openTask(id){
+  const t=task(id);if(!t)return;
+  // re-rendering the same task keeps scroll position and anything half-typed
+  const same=state.openTaskId===id,pm=document.querySelector('#modal-root .modal');
+  const keep=same?{sc:pm?pm.scrollTop:0,c:($('newComment')||{}).value||'',s:($('newSub')||{}).value||''}:null;
+  const ed=can('task:update'),dis=ed?'':'disabled',sps=projSprints(t.projectId).filter(s=>s.status!=='completed'||s.id===t.sprintId);
+  const hist=state.activity.filter(a=>a.taskId===t.id),st=t.subtasks,sd=st.filter(s=>s.done).length;
+  openModal(`<div class="modal lg">
+    <div class="modal-head"><div style="display:flex;gap:8px;align-items:center">${typeI(t.type)}<span class="key">${t.key}</span><span class="muted" style="font-size:12px">· ${esc(state.projects.find(p=>p.id===t.projectId).name)}</span></div>
+      <div style="display:flex;gap:6px">${can('task:delete')?`<button class="btn sm danger" onclick="deleteTask('${t.id}')">${I('trash',14)} Delete</button>`:''}<button class="icon-btn" onclick="closeModal()">${I('x')}</button></div></div>
+    <div class="task-grid">
+      <div class="task-main">
+        <input class="title-input" value="${esc(t.title)}" ${dis} onchange="updateTask('${t.id}','title',this.value)">
+        ${ed?'':'<div class="note" style="margin-top:10px">Read-only: your role can view this task but not edit it.</div>'}
+        <h4>Description <span class="save-ind" id="descSave" aria-live="polite">${ed?'Saves automatically as you type':''}</span></h4>
+        <textarea class="input" rows="4" ${dis} oninput="descInput('${t.id}',this)" placeholder="Add a description…">${esc(t.desc)}</textarea>
+        <h4>Subtasks <span class="save-ind">${st.length?`${sd} of ${st.length} done`:''}</span></h4>
+        ${st.length?`<div class="progress" style="margin:2px 0 6px"><span style="width:${sd/st.length*100}%"></span></div>`:''}
+        ${st.map(s=>`<div class="subtask ${s.done?'done':''}"><input type="checkbox" ${s.done?'checked':''} ${dis} aria-label="Mark '${esc(s.title)}' as done" onchange="toggleSub('${t.id}','${s.id}')"><span>${esc(s.title)}</span>${ed?`<button class="icon-btn" aria-label="Remove subtask" title="Remove" onclick="removeSub('${t.id}','${s.id}')">${I('x',14)}</button>`:''}</div>`).join('')||'<div class="muted" style="font-size:13px">No subtasks yet.</div>'}
+        ${ed?`<div style="display:flex;gap:8px;margin-top:10px"><input class="input" id="newSub" placeholder="Add a subtask and press Enter" aria-label="New subtask" onkeydown="if(event.key==='Enter')addSub('${t.id}')" oninput="$('eSub').textContent=''"><button class="btn sm" onclick="addSub('${t.id}')">Add</button></div><div class="err" id="eSub"></div>`:''}
+        <h4>Comments (${t.comments.length})</h4>
+        ${t.comments.map(c=>`<div class="comment">${avatar(c.userId,28)}<div class="bubble"><div class="who">${esc(user(c.userId).name)}<span>${ago(c.time)}</span></div><div style="white-space:pre-wrap">${esc(c.text)}</div></div></div>`).join('')||'<div class="muted" style="font-size:13px;margin-bottom:10px">No comments yet.</div>'}
+        ${can('comment:create')?`<div class="comment">${avatar(me().id,28)}<div style="flex:1"><textarea class="input" id="newComment" rows="2" placeholder="Write a comment… use @name to mention" oninput="$('eComment').textContent=''"></textarea><div class="err" id="eComment"></div><button class="btn sm primary" style="margin-top:8px" onclick="addComment('${t.id}')">Comment</button></div></div>`:''}
+        <h4>History</h4>
+        ${hist.map(a=>`<div class="hist">${avatar(a.userId,18)}<span><b style="color:var(--text)">${esc(user(a.userId).name)}</b> ${a.text} · ${ago(a.time)}</span></div>`).join('')||'<div class="muted" style="font-size:13px">No changes recorded yet.</div>'}
+      </div>
+      <aside class="task-side">
+        <div class="field"><label>Status</label><select class="input" ${dis} onchange="updateTask('${t.id}','status',this.value)">${STATUS_ORDER.map(s=>opt(s,STATUS[s],t.status)).join('')}</select></div>
+        <div class="field"><label>Priority</label><select class="input" ${dis} onchange="updateTask('${t.id}','priority',this.value)">${PRIORITIES.map(x=>opt(x,x,t.priority)).join('')}</select></div>
+        <div class="field"><label>Assignee</label><select class="input" ${dis} onchange="updateTask('${t.id}','assignee',this.value)">${opt('','Unassigned',t.assignee||'')}${state.users.filter(u=>u.role!=='Viewer').map(u=>opt(u.id,u.name,t.assignee)).join('')}</select></div>
+        <div class="field"><label>Type</label><select class="input" ${dis} onchange="updateTask('${t.id}','type',this.value)">${TYPES.map(x=>opt(x,x,t.type)).join('')}</select></div>
+        <div class="field"><label>Sprint</label><select class="input" ${dis} onchange="updateTask('${t.id}','sprintId',this.value)">${opt('','Backlog',t.sprintId||'')}${sps.map(s=>opt(s.id,s.name,t.sprintId)).join('')}</select></div>
+        <div class="field"><label>Story points</label><select class="input" ${dis} onchange="updateTask('${t.id}','points',this.value)">${[1,2,3,5,8,13].map(n=>opt(n,n,t.points)).join('')}</select></div>
+        <div class="field"><label>Due date</label><input class="input" type="date" ${dis} value="${t.due||''}" onchange="updateTask('${t.id}','due',this.value)"></div>
+        <div class="muted" style="font-size:12px;margin-top:18px">Created ${fmt(t.createdAt)}</div>
+      </aside>
+    </div></div>`,same);
+  state.openTaskId=id;
+  if(keep){const m=document.querySelector('#modal-root .modal');if(m)m.scrollTop=keep.sc;if(keep.c&&$('newComment'))$('newComment').value=keep.c;if(keep.s&&$('newSub'))$('newSub').value=keep.s}
+}
+function rerenderTask(id){if(!state.drag)renderMain();if(state.openTaskId===id)openTask(id)}
+/* description autosave: debounced, shows Saving… / Saved, rolls back on failure */
+let descTimer=null;
+function descInput(id,el){
+  if(!can('task:update'))return;const ind=$('descSave');if(ind)ind.textContent='Saving…';
+  clearTimeout(descTimer);
+  descTimer=setTimeout(()=>{
+    const t=task(id);if(!t)return;const old=t.desc;t.desc=el.value;
+    apiCall('MUTATE').then(()=>{
+      if(state.descLoggedFor!==id){log('task',`updated the description of <b>${t.key}</b>`,t.id);state.descLoggedFor=id}
+      const i=$('descSave');if(i)i.textContent='Saved just now';
+    }).catch(err=>{t.desc=old;const i=$('descSave');if(i)i.innerHTML=`<span style="color:var(--red)">Not saved (${esc(err.message)}). Keep typing to retry.</span>`});
+  },700);
+}
+function addSub(id){
+  const el=$('newSub'),v=el.value.trim();if(v.length<2){$('eSub').textContent='Use at least 2 characters';return}
+  const t=task(id);t.subtasks.push({id:uid(),title:v,done:false});el.value='';
+  log('task',`added subtask "${esc(v)}" to <b>${t.key}</b>`,t.id);rerenderTask(id);setTimeout(()=>{const n=$('newSub');if(n)n.focus()},0);
+}
+function toggleSub(id,sid){
+  const t=task(id),s=t.subtasks.find(x=>x.id===sid);if(!s)return;s.done=!s.done;
+  if(s.done)log('task',`completed subtask "${esc(s.title)}" on <b>${t.key}</b>`,t.id);rerenderTask(id);
+}
+function removeSub(id,sid){const t=task(id),s=t.subtasks.find(x=>x.id===sid);t.subtasks=t.subtasks.filter(x=>x.id!==sid);if(s)log('task',`removed subtask "${esc(s.title)}" from <b>${t.key}</b>`,t.id);rerenderTask(id)}
+const FIELD={title:'title',desc:'description',status:'status',priority:'priority',assignee:'assignee',type:'type',sprintId:'sprint',points:'story points',due:'due date'};
+function show(f,v){if(f==='status')return STATUS[v];if(f==='assignee')return v?user(v).name:'Unassigned';if(f==='sprintId')return sprintName(v);if(f==='due')return v?fmt(new Date(v+'T00:00')):'none';return v}
+/* optimistic field edit: UI changes now, save runs in background, failure reverts with a clear message */
+function updateTask(id,f,v){
+  const t=task(id);if(!t||!can('task:update'))return;
+  if(f==='title'){v=v.trim();if(v.length<3){toast('Title must be at least 3 characters','error');return openTask(id)}}
+  if(['assignee','sprintId','due'].includes(f))v=v||null;if(f==='points')v=+v;
+  const old=t[f],oldOrder=t.order;if(old===v)return;
+  t[f]=v;if(f==='status')t.order=-1;
+  rerenderTask(id);
+  apiCall('MUTATE').then(()=>{
+    if(f==='title')log('task',`renamed <b>${t.key}</b> to "${esc(v)}"`,t.id);
+    else log('task',`changed ${FIELD[f]} of <b>${t.key}</b> from ${esc(show(f,old))} to ${esc(show(f,v))}`,t.id);
+    if(f==='assignee'&&v&&v!==me().id)toast(`${esc(user(v).name)} will get a notification`,'live');
+    if(state.openTaskId===id)openTask(id);
+  }).catch(err=>{
+    if(t[f]===v){t[f]=old;t.order=oldOrder}
+    rerenderTask(id);
+    toast(`Couldn't save ${FIELD[f]} of <b>${t.key}</b> (${esc(err.message)}). It went back to "${esc(show(f,old))}".`,'error');
+  });
+}
+function addComment(id){
+  const el=$('newComment'),txt=el.value.trim();
+  if(!txt){$('eComment').textContent='Write something first';return}
+  const t=task(id);t.comments.push({id:uid(),userId:me().id,text:txt,time:Date.now()});el.value='';
+  log('comment',`commented on <b>${t.key}</b>`,t.id);
+  const m=state.users.find(u=>txt.toLowerCase().includes('@'+u.name.split(' ')[0].toLowerCase()));
+  if(m)toast(`${esc(m.name)} was mentioned and will be notified`,'live');
+  renderMain();openTask(id);
+}
+function deleteTask(id){
+  const t=task(id);if(!t)return;
+  openModal(`<div class="modal" style="max-width:420px"><div class="modal-body"><h3>Delete ${t.key}?</h3><p class="muted" style="margin-top:8px">"${esc(t.title)}" and its ${t.comments.length} comments will be permanently removed. This can't be undone.</p></div>
+  <div class="modal-foot"><button class="btn" onclick="openTask('${id}')">Cancel</button><button class="btn primary" style="background:var(--red);border-color:var(--red)" onclick="confirmDelete('${id}')">Delete task</button></div></div>`);
+}
+function confirmDelete(id){const t=task(id);state.tasks=state.tasks.filter(x=>x.id!==id);log('task',`deleted <b>${t.key}</b> ${esc(t.title)}`);closeModal();renderMain();toast(`<b>${t.key}</b> deleted`)}
+
+/* ---------- team & roles ---------- */
+function viewTeam(){
+  const um=can('user:manage'),rm=can('role:manage');
+  return`<div class="page-head"><div><h1>Team & roles</h1><p class="sub">Manage members, roles and permissions (RBAC)</p></div>
+    <div class="page-actions">${um?`<button class="btn primary" onclick="openInvite()">${I('plus',16)} Invite member</button>`:''}</div></div>
+  <div class="card table-card" style="margin-bottom:16px"><div class="card-head" style="padding:16px 18px 0"><h3>Members</h3><span class="muted">${state.users.length} people</span></div>
+    <div style="overflow-x:auto"><table style="margin-top:10px"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Open tasks</th><th>Status</th></tr></thead><tbody>
+    ${state.users.map(u=>`<tr><td><span style="display:inline-flex;gap:10px;align-items:center">${avatar(u.id,30)}<b>${esc(u.name)}</b>${u.id===me().id?'<span class="pill">You</span>':''}</span></td>
+      <td class="muted">${esc(u.email)}</td>
+      <td><select class="input" style="width:170px;padding:5px 26px 5px 8px" ${um&&u.id!==me().id?'':'disabled'} onchange="changeRole('${u.id}',this.value)">${ROLE_NAMES.map(r=>opt(r,r,u.role)).join('')}</select></td>
+      <td>${state.tasks.filter(t=>t.assignee===u.id&&t.status!=='done').length}</td>
+      <td><span class="badge-p ${u.invited?'chip-planned':'chip-active'}">${u.invited?'Invited':'Active'}</span></td></tr>`).join('')}
+    </tbody></table></div></div>
+  <div class="card table-card"><div class="card-head" style="padding:16px 18px 0"><h3>Permission matrix</h3><span class="muted">${rm?'Click to toggle · Admin always has every permission':'Read-only for your role'}</span></div>
+    <div style="overflow-x:auto"><table class="matrix" style="margin-top:10px"><thead><tr><th>Permission</th>${ROLE_NAMES.map(r=>`<th>${r}</th>`).join('')}</tr></thead><tbody>
+    ${Object.entries(PERMS).map(([k,l])=>`<tr><td><div style="font-weight:500">${l}</div><div class="perm-code">${k}</div></td>${ROLE_NAMES.map(r=>`<td><input type="checkbox" ${state.roles[r].includes(k)?'checked':''} ${rm&&r!=='Admin'?'':'disabled'} onchange="togglePerm('${r}','${k}',this.checked)"></td>`).join('')}</tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+function changeRole(uidv,r){const u=user(uidv),old=u.role;u.role=r;log('user',`changed <b>${esc(u.name)}</b>'s role from ${old} to ${r}`);toast(`${esc(u.name)} is now <b>${r}</b>`)}
+function togglePerm(r,k,on){const a=state.roles[r];if(on&&!a.includes(k))a.push(k);if(!on)state.roles[r]=a.filter(x=>x!==k);log('user',`${on?'granted':'revoked'} <code>${k}</code> ${on?'to':'from'} ${r}`);toast(`${r}: ${on?'granted':'revoked'} <b>${k}</b>`);renderChrome()}
+function openInvite(){
+  openModal(`<div class="modal"><div class="modal-head"><h3>Invite member</h3><button class="icon-btn" onclick="closeModal()">${I('x')}</button></div>
+  <div class="modal-body">
+    <div class="field"><label>Full name</label><input class="input" id="ivName" oninput="$('eivName').textContent=''"><div class="err" id="eivName"></div></div>
+    <div class="field"><label>Email</label><input class="input" id="ivEmail" type="email" oninput="$('eivEmail').textContent=''"><div class="err" id="eivEmail"></div></div>
+    <div class="field"><label>Role</label><select class="input" id="ivRole">${ROLE_NAMES.map(r=>opt(r,r,'Developer')).join('')}</select></div>
+  </div><div class="modal-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="invite()">Send invite</button></div></div>`);
+}
+function invite(){
+  const n=$('ivName').value.trim(),em=$('ivEmail').value.trim();let ok=true;
+  if(n.length<2){$('eivName').textContent='Enter a name';ok=false}
+  if(!EMAIL_RE.test(em)){$('eivEmail').textContent='Enter a valid email';ok=false}
+  else if(state.users.some(u=>u.email===em)){$('eivEmail').textContent='This person is already a member';ok=false}
+  if(!ok)return;
+  const r=$('ivRole').value;state.users.push({id:'u'+uid(),name:n,email:em,role:r,color:COLORS[state.users.length%COLORS.length],invited:true});
+  log('user',`invited <b>${esc(n)}</b> as ${r}`);closeModal();renderMain();toast(`Invite sent to <b>${esc(em)}</b>`);
+}
+
+/* ---------- activity ---------- */
+function viewActivity(){
+  const f=state.actFilter;
+  const list=state.activity.filter(a=>(!f.user||a.userId===f.user)&&(!f.type||a.type===f.type));
+  const groups={};list.forEach(a=>{const d=Math.floor((T0-new Date(a.time).setHours(0,0,0,0))/DAY);const k=d<=0?'Today':d===1?'Yesterday':fmt(a.time);(groups[k]=groups[k]||[]).push(a)});
+  const icon={task:'list',sprint:'sprint',project:'folder',comment:'msg',user:'users'};
+  return`<div class="page-head"><div><h1>Activity history</h1><p class="sub">An audit trail of every change in the workspace, written by the event bus</p></div></div>
+  <div class="filters">
+    <select class="input" aria-label="Person" onchange="af('user',this.value)">${opt('','Everyone',f.user)}${state.users.map(u=>opt(u.id,u.name,f.user)).join('')}</select>
+    <select class="input" aria-label="Event type" onchange="af('type',this.value)">${opt('','All event types',f.type)}${Object.keys(icon).map(k=>opt(k,k[0].toUpperCase()+k.slice(1)+' events',f.type)).join('')}</select>
+    <span class="muted" style="font-size:13px">${list.length} events</span>
+  </div>
+  <div class="card"><div class="timeline">${Object.entries(groups).map(([d,items])=>`<div class="tl-day">${d}</div>`+items.map(a=>`<div class="tl-item"><span class="tl-icon tl-${a.type}">${I(icon[a.type],14)}</span>
+    <div style="flex:1"><div><b>${esc(user(a.userId).name)}</b> ${a.text} ${a.taskId&&task(a.taskId)?`<span class="link" style="font-size:12px;margin-left:4px" onclick="openTask('${a.taskId}')">Open</span>`:''}</div>
+    <div class="muted" style="font-size:12px">${ago(a.time)} · ${new Date(a.time).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div></div>${avatar(a.userId,26)}</div>`).join('')).join('')||'<div class="empty-state">No activity matches these filters.</div>'}</div></div>`;
+}
+
+function af(k,v){state.actFilter[k]=v;renderMain();writeURL()}
+
+/* ---------- simulated real-time events (Socket.IO stand-in) ---------- */
+function liveTick(){
+  if(!state.authed||state.drag||state.view.status!=='success'||state.apiMode==='down')return;
+  const sp=activeSprint();if(!sp)return;
+  const cand=state.tasks.filter(t=>t.sprintId===sp.id&&t.status!=='done'&&!t.pending);if(!cand.length)return;
+  const t=pick(cand),u=pick(state.users.filter(x=>x.id!==me().id&&(x.role==='Developer'||x.role==='Project Manager'))),from=t.status;
+  t.status=NEXT[from];t.order=-1;
+  log('task',`moved <b>${t.key}</b> from ${STATUS[from]} to ${STATUS[t.status]}`,t.id,u.id);
+  notify(`<b>${esc(u.name)}</b> moved <b>${t.key}</b> to ${STATUS[t.status]}`,t.id,u.id);
+  toast(`<b>${esc(u.name)}</b> moved ${t.key} → ${STATUS[t.status]}`,'live');
+  const busy=$('modal-root').innerHTML||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+  if(state.route==='board')renderColumns(t.id);
+  else if(!busy&&['dashboard','activity','sprints'].includes(state.route))renderMain();
+}
+setTimeout(()=>{liveTick();setInterval(liveTick,45000)},15000);
+
+/* ---------- boot: restore theme and session, so a refresh keeps you on the same URL ---------- */
+applyTheme(local.get('tf-theme'));
+(function boot(){
+  try{const s=JSON.parse(session.get('tf-session')||'null');if(s&&typeof s.email==='string'&&EMAIL_RE.test(s.email)){me().name=String(s.name||me().name).slice(0,60);me().email=s.email;enterApp(true);return}}catch(e){}
+  renderAuth();
+})();
+</script>
+</body>
+</html>
