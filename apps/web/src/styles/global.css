@@ -385,3 +385,47 @@ dialog.modal:focus, dialog.modal:focus-visible { outline: none; }
 .more-line { padding-top: 8px; }
 .sprint.backlog { border-style: dashed; }
 @media (max-width: 600px) { .task-rows .badge { display: none; } .input.compact.mini { width: 120px; } }
+
+/* ---------- board (Module 6) ---------- */
+.page-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.page-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+.filters { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.filters .input { width: auto; min-width: 150px; }
+.filters .search { min-width: 220px; }
+.filters .btn { display: inline-flex; align-items: center; gap: 6px; }
+.board-hint { font-size: 12px; margin: -6px 0 12px; }
+.board-empty { margin: -4px 0 12px; }
+.board-empty .link-btn { margin-left: 4px; font-size: inherit; }
+kbd { font-family: ui-monospace, Menlo, monospace; font-size: 11px; background: var(--surface-2); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; color: var(--text); white-space: nowrap; }
+.board { display: grid; grid-template-columns: repeat(4, minmax(240px, 1fr)); gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+.col { background: var(--surface-2); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; min-height: 420px; }
+.col-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 10px; font-size: 13px; }
+.col-head .count { background: var(--surface); border-radius: 999px; padding: 0 8px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.col-head .pts { margin-left: auto; font-size: 12px; color: var(--faint); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dot.todo { background: #9aa1ad; } .dot.in_progress { background: var(--blue); } .dot.in_review { background: var(--purple); } .dot.done { background: var(--green); }
+.col-body { flex: 1; display: flex; flex-direction: column; gap: 8px; border-radius: 9px; padding: 2px; transition: background .15s; min-height: 80px; }
+.col-body.over { background: var(--accent-soft); outline: 2px dashed var(--accent); outline-offset: -2px; }
+.col-body:not(:has(.kcard))::after { content: "Drop tasks here"; color: var(--faint); font-size: 12px; text-align: center; padding: 24px 0; border: 1px dashed var(--border); border-radius: 9px; }
+.col-body.readonly:not(:has(.kcard))::after { content: "No tasks"; }
+.kcard { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; cursor: grab; box-shadow: var(--shadow); transition: box-shadow .15s, border-color .15s; touch-action: manipulation; user-select: none; }
+.kcard:hover { box-shadow: 0 4px 12px rgba(16,24,40,.1); border-color: var(--accent); }
+.kcard:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.kcard.locked { cursor: pointer; }
+.kcard.dragging { opacity: .45; }
+.kcard.overlay { cursor: grabbing; transform: rotate(1.5deg); box-shadow: var(--shadow-lg); border-color: var(--accent); }
+.kcard.saving { opacity: .7; border-style: dashed; cursor: progress; }
+.kcard.saving .kc-title::after { content: " · saving…"; color: var(--faint); font-weight: 400; font-size: 12px; }
+.kcard.reverted { animation: shake .45s ease; border-color: var(--red); }
+@keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+.kc-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.kc-top .badge { margin-left: auto; }
+.kc-title { font-weight: 500; font-size: 13.5px; margin-bottom: 10px; line-height: 1.4; overflow-wrap: anywhere; }
+.kc-foot { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.kc-foot .meta { display: inline-flex; align-items: center; gap: 3px; }
+.kc-foot .meta.overdue { color: var(--red); }
+.spacer { flex: 1; }
+.add-card { margin-top: 8px; padding: 8px; border-radius: 8px; color: var(--muted); text-align: left; font-weight: 500; }
+.add-card:hover { background: var(--surface); color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .kcard.reverted { animation: none; } .kcard.overlay { transform: none; } }
+@media (max-width: 600px) { .filters .input, .filters .search { flex: 1 1 140px; min-width: 0; } }

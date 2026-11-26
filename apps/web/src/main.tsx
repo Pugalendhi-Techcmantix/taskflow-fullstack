@@ -12,6 +12,7 @@ import { AcceptInvitePage } from './features/team/AcceptInvitePage';
 import { TeamPage } from './features/team/TeamPage';
 import { ProjectLayout, ProjectOverview } from './features/projects/ProjectPage';
 import { ProjectSectionRedirect } from './features/projects/ProjectSectionRedirect';
+import { BoardPage } from './features/board/BoardPage';
 import { SprintsPage } from './features/sprints/SprintsPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { ProjectsPage } from './features/projects/ProjectsPage';
@@ -38,10 +39,12 @@ const router = createBrowserRouter([
                 element: <ProjectLayout />,
                 children: [
                   { index: true, element: <ProjectOverview /> },
+                  { path: 'board', element: <BoardPage /> },
                   { path: 'sprints', element: <SprintsPage /> },
                   { path: 'tasks', element: <TasksPage /> },
                 ],
               },
+              { path: '/board', element: <ProjectSectionRedirect section="board" /> },
               { path: '/sprints', element: <ProjectSectionRedirect section="sprints" /> },
               { path: '/tasks', element: <ProjectSectionRedirect section="tasks" /> },
               { path: '/team', element: <TeamPage /> },

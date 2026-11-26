@@ -19,6 +19,8 @@ export type TaskRecord = {
   /** "YYYY-MM-DD" */
   dueDate: string | null;
   doneAt: Date | null;
+  /** Order inside its board column (sprint + status). */
+  position: number;
   createdAt: Date;
   updatedAt: Date;
   subtaskTotal: number;
@@ -43,7 +45,11 @@ export type NewTask = {
   sprintId: string | null;
   dueDate: string | null;
   doneAt: Date | null;
+  position: number;
 };
+
+/** A board column: the tasks of one sprint (or the backlog, `sprintId: null`) with one status. */
+export type Column = { projectId: string; sprintId: string | null; status: TaskStatus };
 
 export type TaskChanges = Partial<{
   title: string;
@@ -56,12 +62,20 @@ export type TaskChanges = Partial<{
   sprintId: string | null;
   dueDate: string | null;
   doneAt: Date | null;
+  position: number;
 }>;
 
 export interface TaskRepository {
   /** Oldest first (by number). */
   listByProject(projectId: string): Promise<TaskRecord[]>;
   findByNumber(projectId: string, number: number): Promise<TaskDetailRecord | null>;
+  findById(id: string): Promise<TaskRecord | null>;
+  /** One sprint's tasks in board order (position, then number). */
+  listBySprint(sprintId: string): Promise<TaskRecord[]>;
+  /** The highest position in the column, or null if it is empty. */
+  lastPosition(column: Column): Promise<number | null>;
+  /** Spreads the column out again (POSITION_STEP apart, same order) when cards got too close. */
+  renumberColumn(column: Column): Promise<void>;
   /** Takes the project's next number atomically: two simultaneous creates never share a key. */
   create(data: NewTask): Promise<TaskRecord>;
   update(id: string, changes: TaskChanges): Promise<TaskRecord>;

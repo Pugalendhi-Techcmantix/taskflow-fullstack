@@ -20,7 +20,7 @@ const onMutationError = (err: unknown) => {
 /** The project for the current /projects/:key/* page (provided by ProjectLayout). */
 export const useCurrentProject = () => useOutletContext<Project>();
 
-/** Shared frame of every project page: header + Overview / Sprints tabs + the section below. */
+/** Shared frame of every project page: header + Overview / Board / Tasks / Sprints tabs + the section below. */
 export function ProjectLayout() {
   const key = (useParams().key ?? '').toUpperCase();
   const project = useQuery({ queryKey: projectKeys.detail(key), queryFn: ({ signal }) => fetchProject(key, signal), retry: false });
@@ -54,6 +54,7 @@ export function ProjectLayout() {
       </div>
       <nav className="tabs-line" aria-label="Project sections">
         <NavLink end to={`/projects/${p.key}`} onClick={() => rememberProject(p.key)}>Overview</NavLink>
+        <NavLink to={`/projects/${p.key}/board`} onClick={() => rememberProject(p.key)}>Board</NavLink>
         <NavLink to={`/projects/${p.key}/tasks`} onClick={() => rememberProject(p.key)}>Tasks</NavLink>
         <NavLink to={`/projects/${p.key}/sprints`} onClick={() => rememberProject(p.key)}>Sprints</NavLink>
       </nav>

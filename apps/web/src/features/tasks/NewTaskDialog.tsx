@@ -22,7 +22,11 @@ import { createTask, taskKeys } from './tasks-api';
 type FormState = { status: 'idle' } | { status: 'error'; message: string; fields: Record<string, string>; values: Record<string, string> };
 
 /** "+ New task" — also used from the top bar. Opens the created task afterwards. */
-export function NewTaskDialog({ projectKey, onClose }: { projectKey: string; onClose: () => void }) {
+/**
+ * `onCreated` decides what happens with the new task (the board opens it in place);
+ * by default the Tasks page opens with the new task's dialog.
+ */
+export function NewTaskDialog({ projectKey, onClose, onCreated }: { projectKey: string; onClose: () => void; onCreated?: (taskKey: string) => void }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const project = useQuery({ queryKey: projectKeys.detail(projectKey), queryFn: ({ signal }) => fetchProject(projectKey, signal) });
@@ -51,7 +55,8 @@ export function NewTaskDialog({ projectKey, onClose }: { projectKey: string; onC
       void qc.invalidateQueries({ queryKey: projectKeys.all });
       toast(`${task.key} created`);
       onClose();
-      void navigate(`/projects/${projectKey}/tasks?task=${task.key}`);
+      if (onCreated) onCreated(task.key);
+      else void navigate(`/projects/${projectKey}/tasks?task=${task.key}`);
       return { status: 'idle' };
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) void reloadSessionUser();

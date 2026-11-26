@@ -2,8 +2,8 @@ import { Link, Navigate } from 'react-router';
 import { LoadError, SkeletonRows } from '../../app/feedback';
 import { lastProject, rememberProject, useProjects } from './projects-api';
 
-type Section = 'sprints' | 'tasks';
-const TITLES: Record<Section, string> = { sprints: 'Sprints', tasks: 'Tasks & issues' };
+type Section = 'board' | 'sprints' | 'tasks';
+const TITLES: Record<Section, string> = { board: 'Board', sprints: 'Sprints', tasks: 'Tasks & issues' };
 
 /**
  * Sidebar shortcut such as "/sprints": opens that section of the last project you used,

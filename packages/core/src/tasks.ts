@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isoDateSchema } from './sprints';
+import { isoDateSchema, sprint } from './sprints';
 
 /* ---------- fixed value sets (labels match the prototype) ---------- */
 
@@ -70,6 +70,38 @@ export const updateTaskInput = z
   .refine((o) => Object.keys(o).length > 0, 'Nothing to update');
 export type UpdateTaskInput = z.infer<typeof updateTaskInput>;
 
+/* ---------- board: moving a card ---------- */
+
+/**
+ * Move a card to `status`, between two neighbour cards of that column (ids, not positions:
+ * the server works out the new position). Both null = the column is empty, or "put it at the end".
+ */
+export const moveTaskInput = z.object({
+  status: taskStatusSchema,
+  afterId: z.uuid('Invalid card id').nullable().default(null),
+  beforeId: z.uuid('Invalid card id').nullable().default(null),
+});
+export type MoveTaskInput = z.infer<typeof moveTaskInput>;
+
+/** Gap between cards when a column is (re)numbered. */
+export const POSITION_STEP = 1024;
+/** Below this gap the column is renumbered before a card is put between two others. */
+export const MIN_POSITION_GAP = 1e-6;
+
+/**
+ * The position for a card placed after `prev` and before `next` (fractional ordering: one row changes per move).
+ * Null means "no card on that side".
+ */
+export function positionBetween(prev: number | null, next: number | null): number {
+  if (prev === null && next === null) return POSITION_STEP;
+  if (prev === null) return (next ?? 0) - POSITION_STEP;
+  if (next === null) return prev + POSITION_STEP;
+  return (prev + next) / 2;
+}
+
+/** Board order: by position, then by number (ties happen when two cards were created at the same moment). */
+export const byPosition = <T extends { position: number; number: number }>(a: T, b: T) => a.position - b.position || a.number - b.number;
+
 /* ---------- subtasks and comments ---------- */
 
 const subtaskTitle = z.string().trim().min(1, 'Enter a subtask').max(200, 'Use at most 200 characters');
@@ -134,6 +166,8 @@ export const taskSummary = z.object({
   assignee: personRef.nullable(),
   sprint: z.object({ id: z.string(), name: z.string() }).nullable(),
   dueDate: z.string().nullable(),
+  /** Order inside its board column (sprint + status). */
+  position: z.number(),
   subtasks: z.object({ total: z.number().int(), done: z.number().int() }),
   commentCount: z.number().int(),
   createdAt: z.string(),
@@ -158,6 +192,10 @@ export type TaskDetail = z.infer<typeof taskDetail>;
 
 export const tasksResponse = z.object({ tasks: z.array(taskSummary) });
 export const taskResponse = z.object({ task: taskDetail });
+export const taskSummaryResponse = z.object({ task: taskSummary });
+/** The active sprint's board. `sprint: null` = no active sprint. Tasks are in board order. */
+export const boardResponse = z.object({ sprint: sprint.nullable(), tasks: z.array(taskSummary) });
+export type Board = z.infer<typeof boardResponse>;
 
 /** A task is "overdue" when its due date has passed and it is not done. */
 export const isOverdue = (t: Pick<TaskSummary, 'dueDate' | 'status'>, today: string) =>

@@ -1,20 +1,25 @@
 import {
   ERROR_CODES,
+  MIN_POSITION_GAP,
   findMentions,
+  positionBetween,
   taskKey,
+  type Board,
   type CreateTaskInput,
+  type MoveTaskInput,
   type TaskDetail,
   type TaskStatus,
   type TaskSummary,
   type UpdateSubtaskInput,
   type UpdateTaskInput,
 } from '@taskflow/core';
-import { AppError, forbidden, notFoundError } from '../../http/errors';
+import { AppError, conflict, forbidden, notFoundError } from '../../http/errors';
 import type { Repositories } from '../../repositories';
 import { isAdmin, type Actor } from '../access/actor';
 import type { ProjectRecord } from '../projects/projects.repository';
 import type { ProjectsService } from '../projects/projects.service';
-import type { TaskChanges, TaskDetailRecord, TaskRecord } from './tasks.repository';
+import { toSprint } from '../sprints/sprints.service';
+import type { Column, TaskChanges, TaskDetailRecord, TaskRecord } from './tasks.repository';
 
 export const toTaskSummary = (t: TaskRecord): TaskSummary => ({
   id: t.id,
@@ -29,6 +34,7 @@ export const toTaskSummary = (t: TaskRecord): TaskSummary => ({
   assignee: t.assignee,
   sprint: t.sprint,
   dueDate: t.dueDate,
+  position: t.position,
   subtasks: { total: t.subtaskTotal, done: t.subtaskDone },
   commentCount: t.commentCount,
   createdAt: t.createdAt.toISOString(),
@@ -81,6 +87,9 @@ export function createTasksService(deps: {
   const doneAtFor = (from: TaskStatus | null, to: TaskStatus): Date | null | undefined =>
     to === 'done' ? (from === 'done' ? undefined : now()) : from === 'done' ? null : undefined;
 
+  /** Position at the bottom of a column (new tasks, and tasks that change column outside the board). */
+  const endOf = async (column: Column) => positionBetween(await tasks.lastPosition(column), null);
+
   async function list(actor: Actor, projectKey: string): Promise<TaskSummary[]> {
     const project = await deps.projects.visibleProject(actor, projectKey);
     return (await tasks.listByProject(project.id)).map(toTaskSummary);
@@ -100,6 +109,7 @@ export function createTasksService(deps: {
       projectId: project.id,
       reporterId: actor.user.id,
       doneAt: input.status === 'done' ? now() : null,
+      position: await endOf({ projectId: project.id, sprintId: input.sprintId, status: input.status }),
     });
     return toTaskDetail(await taskIn(project, created.number));
   }
@@ -124,8 +134,67 @@ export function createTasksService(deps: {
       const doneAt = doneAtFor(t.status, input.status);
       if (doneAt !== undefined) changes.doneAt = doneAt;
     }
+    // Changing status or sprint from the dialog puts the card at the bottom of its new board column.
+    const sprintId = changes.sprintId !== undefined ? changes.sprintId : (t.sprint?.id ?? null);
+    const status = changes.status ?? t.status;
+    if (sprintId !== (t.sprint?.id ?? null) || status !== t.status) {
+      changes.position = await endOf({ projectId: project.id, sprintId, status });
+    }
     await tasks.update(t.id, changes);
     return toTaskDetail(await taskIn(project, number));
+  }
+
+  /* ---------- board ---------- */
+
+  /** The active sprint and its tasks in board order; `sprint: null` when no sprint is active. */
+  async function board(actor: Actor, projectKey: string): Promise<Board> {
+    const project = await deps.projects.visibleProject(actor, projectKey);
+    const active = (await sprints.listByProject(project.id)).find((s) => s.status === 'active');
+    if (!active) return { sprint: null, tasks: [] };
+    return { sprint: toSprint(active), tasks: (await tasks.listBySprint(active.id)).map(toTaskSummary) };
+  }
+
+  /**
+   * Moves a card to `input.status`, between the cards `afterId` (above) and `beforeId` (below) of that column.
+   * Only the moved row changes, unless the neighbours are too close: then the column is renumbered first.
+   * Neighbours that are no longer where the browser thought (someone else moved them) give 409.
+   */
+  async function move(actor: Actor, projectKey: string, number: number, input: MoveTaskInput): Promise<TaskSummary> {
+    const project = await deps.projects.visibleProject(actor, projectKey);
+    const t = await taskIn(project, number);
+    const column: Column = { projectId: project.id, sprintId: t.sprint?.id ?? null, status: input.status };
+    const stale = () => conflict('The board changed while you were moving this card. Refresh and try again.');
+
+    async function neighbour(field: 'afterId' | 'beforeId', id: string | null) {
+      if (id === null) return null;
+      if (id === t.id) throw fieldError(field, 'A card cannot be placed next to itself');
+      const n = await tasks.findById(id);
+      if (!n || n.projectId !== project.id) throw fieldError(field, 'That card is not in this project');
+      if ((n.sprint?.id ?? null) !== column.sprintId || n.status !== column.status) throw stale();
+      return n;
+    }
+    const placeBetween = async () => {
+      const [after, before] = [await neighbour('afterId', input.afterId), await neighbour('beforeId', input.beforeId)];
+      if (after && before && after.position >= before.position) throw stale();
+      return { after, before };
+    };
+
+    let { after, before } = await placeBetween();
+    let position: number;
+    if (!after && !before) {
+      position = await endOf(column);
+    } else {
+      if (after && before && before.position - after.position < MIN_POSITION_GAP) {
+        await tasks.renumberColumn(column);
+        ({ after, before } = await placeBetween());
+      }
+      position = positionBetween(after?.position ?? null, before?.position ?? null);
+    }
+
+    const changes: TaskChanges = { status: input.status, position };
+    const doneAt = doneAtFor(t.status, input.status);
+    if (doneAt !== undefined) changes.doneAt = doneAt;
+    return toTaskSummary(await tasks.update(t.id, changes));
   }
 
   async function remove(actor: Actor, projectKey: string, number: number): Promise<void> {
@@ -182,5 +251,5 @@ export function createTasksService(deps: {
     return toTaskDetail(await taskIn(project, number));
   }
 
-  return { list, get, create, update, remove, addSubtask, updateSubtask, deleteSubtask, addComment, deleteComment };
+  return { list, get, create, update, remove, board, move, addSubtask, updateSubtask, deleteSubtask, addComment, deleteComment };
 }

@@ -1,6 +1,6 @@
-import { taskPrioritySchema, taskStatusSchema, taskTypeSchema, toIsoDate } from '@taskflow/core';
+import { POSITION_STEP, taskPrioritySchema, taskStatusSchema, taskTypeSchema, toIsoDate } from '@taskflow/core';
 import type { Prisma, PrismaClient } from '../../../generated/client';
-import type { TaskChanges, TaskDetailRecord, TaskRecord, TaskRepository } from './tasks.repository';
+import type { Column, TaskChanges, TaskDetailRecord, TaskRecord, TaskRepository } from './tasks.repository';
 
 const person = { select: { id: true, name: true } } as const;
 
@@ -42,6 +42,7 @@ function toTaskRecord(t: SummaryRow | DetailRow): TaskRecord {
     sprint: t.sprint,
     dueDate: t.dueDate ? toIsoDate(t.dueDate) : null,
     doneAt: t.doneAt,
+    position: t.position,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
     subtaskTotal: t.subtasks.length,
@@ -68,8 +69,12 @@ function toDbChanges(c: TaskChanges): Prisma.TaskUncheckedUpdateInput {
   if (c.sprintId !== undefined) out.sprintId = c.sprintId;
   if (c.dueDate !== undefined) out.dueDate = c.dueDate === null ? null : toDbDate(c.dueDate);
   if (c.doneAt !== undefined) out.doneAt = c.doneAt;
+  if (c.position !== undefined) out.position = c.position;
   return out;
 }
+
+const columnWhere = ({ projectId, sprintId, status }: Column) => ({ projectId, sprintId, status }) satisfies Prisma.TaskWhereInput;
+const boardOrder = [{ position: 'asc' }, { number: 'asc' }] satisfies Prisma.TaskOrderByWithRelationInput[];
 
 export function createPrismaTaskRepository(prisma: PrismaClient): TaskRepository {
   return {
@@ -80,6 +85,26 @@ export function createPrismaTaskRepository(prisma: PrismaClient): TaskRepository
     async findByNumber(projectId, number) {
       const row = await prisma.task.findUnique({ where: { projectId_number: { projectId, number } }, include: detailInclude });
       return row ? toDetailRecord(row) : null;
+    },
+    async findById(id) {
+      const row = await prisma.task.findUnique({ where: { id }, include: summaryInclude });
+      return row ? toTaskRecord(row) : null;
+    },
+    async listBySprint(sprintId) {
+      const rows = await prisma.task.findMany({ where: { sprintId }, include: summaryInclude, orderBy: boardOrder });
+      return rows.map(toTaskRecord);
+    },
+    async lastPosition(column) {
+      const r = await prisma.task.aggregate({ where: columnWhere(column), _max: { position: true } });
+      return r._max.position;
+    },
+    async renumberColumn(column) {
+      await prisma.$transaction(async (tx) => {
+        const ids = await tx.task.findMany({ where: columnWhere(column), select: { id: true }, orderBy: boardOrder });
+        for (const [i, { id }] of ids.entries()) {
+          await tx.task.update({ where: { id }, data: { position: (i + 1) * POSITION_STEP } });
+        }
+      });
     },
     async create({ dueDate, ...data }) {
       const row = await prisma.$transaction(async (tx) => {

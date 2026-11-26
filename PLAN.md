@@ -92,7 +92,7 @@ Checked side by side on 2026-11-26 (Projects, Sprints, Team & roles, Sign in). T
 | Sprint card progress, "x of y tasks done · points", task list, "+ N more · see all" | Sprints | ✅ Module 5 |
 | **Backlog** card with "Move to sprint…" | Sprints | ✅ Module 5 |
 | **Open tasks** column | Team & roles | ✅ Module 5 |
-| **Open board** button on the active sprint | Sprints | Module 6 |
+| **Open board** button on the active sprint | Sprints | ✅ Module 6 |
 | Global search bar ("press /") and keyboard-shortcut help (`?`, `C`, `G` then a letter) | Top bar | Module 7 |
 | **History** list inside the task dialog | Task dialog | Module 8 |
 | Notification bell with unread count | Top bar | Module 9 |
@@ -172,7 +172,8 @@ Order follows dependencies: each module builds on the ones before it.
 |---|---|
 | **Features** | 4 columns, drag-and-drop with dnd-kit, a saved card order (fractional `position` so a move updates one row), **optimistic update with rollback**, **keyboard moves** (arrows + Shift+←/→), board filters, read-only board for Viewers |
 | **Done when** | Moves feel instant, a failed save puts the card back with a message, and the board is fully usable without a mouse. |
-| **Status** | ⬜ Not started |
+| **Built** | `GET /api/projects/:key/board` (active sprint + its cards); `POST /api/projects/:key/tasks/:number/move` (`task:move`); Board tab `/projects/:key/board` and sidebar `/board`; filters + Copy link in the URL (`useUrlState<T>`); Shift+arrow keyboard moves; **Open board** on the active sprint |
+| **Status** | ✅ Approved 2026-11-26 |
 
 ### Module 7 — Search, Filters & Pagination
 | | |
@@ -224,7 +225,7 @@ Order follows dependencies: each module builds on the ones before it.
 | 3 | Projects | ✅ Approved 2026-11-26 |
 | 4 | Sprints | ✅ Approved 2026-11-26 |
 | 5 | Tasks & Issues | ✅ Approved 2026-11-26 |
-| 6 | Kanban Board | ⬜ Not started |
+| 6 | Kanban Board | ✅ Approved 2026-11-26 |
 | 7 | Search, Filters & Pagination | ⬜ Not started |
 | 8 | Activity History | ⬜ Not started |
 | 9 | Real-Time Notifications | ⬜ Not started |
@@ -255,3 +256,8 @@ Legend: ⬜ not started · ⏳ in progress · 🧪 waiting for user test · ✅ 
 | 2026-11-26 | "One active sprint per project" = PostgreSQL partial unique index (`WHERE status = 'active'`), added in raw SQL | It holds even when two people press Start at once. Prisma 7.10 can't declare partial indexes but leaves this one alone (verified: no drift). |
 | 2026-11-26 | Sprint dates are calendar days (`DATE`, "YYYY-MM-DD"); starting a sprint keeps its planned dates | No time-zone shifts; the real start time is recorded separately (`started_at`) |
 | 2026-11-26 | Backlog and "move unfinished tasks on complete" moved to Module 5 | They need tasks, which Module 5 adds |
+| 2026-11-26 | Card order = `tasks.position` (double), 1024 apart; a move sends the **neighbour card ids**, and the server puts the card at the midpoint | One row changes per move, and the browser never sends raw positions. If neighbours get closer than 0.000001, the server renumbers that one column first. A neighbour that has moved since gives 409 ("the board changed"). |
+| 2026-11-26 | Moving a card needs `task:move`; changing status in the task dialog needs `task:update` | Matches the prototype's permission list; a card moved by the dialog goes to the bottom of its new column |
+| 2026-11-26 | Board query key sits under the task-list key | Every task change that refreshes the Tasks table also refreshes the board, without extra wiring |
+| 2026-11-26 | `useUrlState<T>` (Zod object, each field `.catch(default)`) built in Module 6 for the board filters; Module 7 reuses it for the Tasks table | The prototype keeps board filters in the URL; hand-edited or unknown values fall back to "all" |
+| 2026-11-26 | Keyboard moves are custom (Shift + arrows), not dnd-kit's keyboard sensor | The prototype's shortcuts; dnd-kit handles mouse and touch only |

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createCommentInput, createSubtaskInput, createTaskInput, projectKeySchema, updateSubtaskInput, updateTaskInput } from '@taskflow/core';
+import { createCommentInput, createSubtaskInput, createTaskInput, moveTaskInput, projectKeySchema, updateSubtaskInput, updateTaskInput } from '@taskflow/core';
 import { z } from 'zod';
 import { parse } from '../../http/errors';
 import type { Guards } from '../access/actor';
@@ -35,6 +35,13 @@ export function createTasksRouter(tasks: TasksService, { signedIn, requirePermis
     const { key, number } = parse(taskParams, req.params);
     const input = parse(updateTaskInput, req.body);
     res.json({ task: await tasks.update(await actorOf(req), key, number, input) });
+  });
+
+  /** Board drag-and-drop and keyboard moves. */
+  router.post('/:number/move', requirePermission('task:move'), async (req, res) => {
+    const { key, number } = parse(taskParams, req.params);
+    const input = parse(moveTaskInput, req.body);
+    res.json({ task: await tasks.move(await actorOf(req), key, number, input) });
   });
 
   router.delete('/:number', requirePermission('task:delete'), async (req, res) => {
@@ -76,5 +83,16 @@ export function createTasksRouter(tasks: TasksService, { signedIn, requirePermis
     res.json({ task: await tasks.deleteComment(await actorOf(req), key, number, commentId) });
   });
 
+  return router;
+}
+
+/** /api/projects/:key/board — the active sprint's cards. Reading follows project visibility. */
+export function createBoardRouter(tasks: TasksService, { signedIn, actorOf }: Guards): Router {
+  const router = Router({ mergeParams: true });
+  router.use(signedIn);
+  router.get('/', async (req, res) => {
+    const { key } = parse(keyParam, req.params);
+    res.json(await tasks.board(await actorOf(req), key));
+  });
   return router;
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { DEFAULT_ROLE_PERMISSIONS, PERMISSION_KEYS, ROLE_IDS, ROLE_NAMES, type PermissionKey, type RoleId } from '@taskflow/core';
+import { DEFAULT_ROLE_PERMISSIONS, PERMISSION_KEYS, POSITION_STEP, ROLE_IDS, ROLE_NAMES, byPosition, type PermissionKey, type RoleId } from '@taskflow/core';
 import type { InviteRecord, InviteRepository, RoleRepository } from '../../src/modules/access/access.repository';
 import {
   EmailTakenError,
@@ -10,7 +10,7 @@ import {
 } from '../../src/modules/auth/auth.repository';
 import { ProjectKeyTakenError, type ProjectRecord, type ProjectRepository } from '../../src/modules/projects/projects.repository';
 import type { SprintRecord, SprintRepository } from '../../src/modules/sprints/sprints.repository';
-import type { CommentRecord, SubtaskRecord, TaskDetailRecord, TaskRecord, TaskRepository } from '../../src/modules/tasks/tasks.repository';
+import type { Column, CommentRecord, SubtaskRecord, TaskDetailRecord, TaskRecord, TaskRepository } from '../../src/modules/tasks/tasks.repository';
 import type { Repositories } from '../../src/repositories';
 
 /**
@@ -281,12 +281,26 @@ export function createMemoryRepositories(now: () => Date) {
     comments: t.comments.map(({ authorId, ...c }) => ({ ...c, author: personRef(authorId) })),
   });
 
+  const inColumn = (t: StoredTask, c: Column) => t.projectId === c.projectId && t.sprintId === c.sprintId && t.status === c.status;
+
   const taskRepo: TaskRepository = {
     listByProject: async (projectId) =>
       tasks.filter((t) => t.projectId === projectId).toSorted((a, b) => a.number - b.number).map(toTaskRecord),
     findByNumber: async (projectId, number) => {
       const t = tasks.find((x) => x.projectId === projectId && x.number === number);
       return t ? toTaskDetail(t) : null;
+    },
+    findById: async (id) => {
+      const t = tasks.find((x) => x.id === id);
+      return t ? toTaskRecord(t) : null;
+    },
+    listBySprint: async (sprintId) => tasks.filter((t) => t.sprintId === sprintId).toSorted(byPosition).map(toTaskRecord),
+    async lastPosition(column) {
+      const ps = tasks.filter((t) => inColumn(t, column)).map((t) => t.position);
+      return ps.length ? Math.max(...ps) : null;
+    },
+    async renumberColumn(column) {
+      for (const [i, t] of tasks.filter((x) => inColumn(x, column)).toSorted(byPosition).entries()) t.position = (i + 1) * POSITION_STEP;
     },
     async create(data) {
       const number = nextNumber.get(data.projectId) ?? 101;

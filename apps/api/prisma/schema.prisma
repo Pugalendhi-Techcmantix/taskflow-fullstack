@@ -187,6 +187,8 @@ model Task {
   dueDate     DateTime? @map("due_date") @db.Date
   /// When the task last became Done (for burndown and reports)
   doneAt      DateTime? @map("done_at") @db.Timestamptz(3)
+  /// Order inside its board column (sprint + status). Fractional: a move updates one row.
+  position    Float     @default(0)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -200,6 +202,7 @@ model Task {
   @@unique([projectId, number])
   @@index([projectId, status])
   @@index([sprintId])
+  @@index([projectId, sprintId, status, position])
   @@index([assigneeId])
   @@map("tasks")
 }

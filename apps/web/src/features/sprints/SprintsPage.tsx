@@ -16,8 +16,10 @@ import { StatusBadge, TypeIcon, PriorityBadge } from '../tasks/badges';
 import { TaskDialog } from '../tasks/TaskDialog';
 import { fetchTasks, taskKeys, updateTask } from '../tasks/tasks-api';
 import { useTaskParam } from '../tasks/useTaskParam';
+import { CompleteSprintDialog, destinationName, useCompleteSprint } from './CompleteSprintDialog';
+import { sprintTiming } from './sprint-timing';
 import { SprintFormDialog } from './SprintFormDialog';
-import { completeSprint, deleteSprint, fetchSprints, sprintKeys, startSprint } from './sprints-api';
+import { deleteSprint, fetchSprints, sprintKeys, startSprint } from './sprints-api';
 
 type Dialog =
   | { kind: 'none' }
@@ -25,21 +27,6 @@ type Dialog =
   | { kind: 'edit'; sprint: Sprint }
   | { kind: 'complete'; sprint: Sprint }
   | { kind: 'delete'; sprint: Sprint };
-
-/** "6 days left", "Starts in 3 days", "Overdue by 2 days"… relative to today in the user's time zone. */
-function timing(s: Sprint, today: string): string {
-  if (s.status === 'completed') return 'Completed';
-  if (s.status === 'active') {
-    const left = daysBetween(today, s.endDate);
-    if (left > 0) return `${plural(left, 'day')} left`;
-    if (left === 0) return 'Ends today';
-    return `Overdue by ${plural(-left, 'day')}`;
-  }
-  const until = daysBetween(today, s.startDate);
-  if (until > 0) return `Starts in ${plural(until, 'day')}`;
-  if (until === 0) return 'Starts today';
-  return `Planned start was ${plural(-until, 'day')} ago`;
-}
 
 const SHOWN_PER_SPRINT = 5;
 const sumPoints = (ts: TaskSummary[]) => ts.reduce((n, t) => n + (t.points ?? 0), 0);
@@ -85,16 +72,7 @@ export function SprintsPage() {
     onSettled: refresh,
   });
 
-  const complete = useMutation({
-    mutationFn: ({ sprint, moveTo }: { sprint: Sprint; moveTo: string }) => completeSprint(project.key, sprint.id, { moveUnfinishedTo: moveTo }),
-    onError,
-    onSuccess: ({ sprint, movedTasks }, { moveTo }) => {
-      const where = moveTo === 'backlog' ? 'the backlog' : (sprints.data?.sprints.find((s) => s.id === moveTo)?.name ?? 'the next sprint');
-      toast(`${sprint.name} completed${movedTasks ? ` · ${plural(movedTasks, 'unfinished task')} moved to ${where}` : ''}`);
-      close();
-    },
-    onSettled: refresh,
-  });
+  const complete = useCompleteSprint(project.key, close);
 
   const remove = useMutation({
     mutationFn: (sprint: Sprint) => deleteSprint(project.key, sprint.id),
@@ -143,7 +121,7 @@ export function SprintsPage() {
       <div className="section-head">
         <div>
           <h2>Sprints</h2>
-          <p className="muted small">{active ? `${active.name} is active · ${timing(active, today)}` : 'No active sprint'} · {plural(list.length, 'sprint')}</p>
+          <p className="muted small">{active ? `${active.name} is active · ${sprintTiming(active, today)}` : 'No active sprint'} · {plural(list.length, 'sprint')}</p>
         </div>
         {manage && <button className="btn primary" onClick={() => setDialog({ kind: 'create' })}>+ New sprint</button>}
       </div>
@@ -169,17 +147,18 @@ export function SprintsPage() {
                 <h3>{s.name}</h3>
                 <span className={`badge chip-${s.status}`}>{SPRINT_STATUS_LABELS[s.status]}</span>
                 <span className="muted small nowrap"><Icon name="cal" size={13} /> {formatRange(s.startDate, s.endDate)} · {plural(inclusiveDays(s.startDate, s.endDate), 'day')}</span>
-                <span className={`small nowrap ${s.status === 'active' && daysBetween(today, s.endDate) < 0 ? 'overdue' : 'muted'}`}>{timing(s, today)}</span>
-                {manage && (
+                <span className={`small nowrap ${s.status === 'active' && daysBetween(today, s.endDate) < 0 ? 'overdue' : 'muted'}`}>{sprintTiming(s, today)}</span>
+                {(manage || s.status === 'active') && (
                   <span className="sprint-actions">
-                    {s.status === 'planned' && (
+                    {manage && s.status === 'planned' && (
                       <button className="btn sm" disabled={Boolean(active) || start.isPending}
                         title={active ? `Complete ${active.name} first — only one sprint can be active` : undefined}
                         onClick={() => start.mutate(s)}>Start sprint</button>
                     )}
-                    {s.status === 'active' && <button className="btn sm" onClick={() => setDialog({ kind: 'complete', sprint: s })}>Complete sprint</button>}
-                    {s.status !== 'completed' && <button className="btn sm" onClick={() => setDialog({ kind: 'edit', sprint: s })} aria-label={`Edit ${s.name}`}>Edit</button>}
-                    {s.status === 'planned' && <button className="btn sm danger" onClick={() => setDialog({ kind: 'delete', sprint: s })} aria-label={`Delete ${s.name}`}>Delete</button>}
+                    {manage && s.status === 'active' && <button className="btn sm" onClick={() => setDialog({ kind: 'complete', sprint: s })}>Complete sprint</button>}
+                    {s.status === 'active' && <Link className="btn sm primary" to={`/projects/${project.key}/board`}>Open board</Link>}
+                    {manage && s.status !== 'completed' && <button className="btn sm" onClick={() => setDialog({ kind: 'edit', sprint: s })} aria-label={`Edit ${s.name}`}>Edit</button>}
+                    {manage && s.status === 'planned' && <button className="btn sm danger" onClick={() => setDialog({ kind: 'delete', sprint: s })} aria-label={`Delete ${s.name}`}>Delete</button>}
                   </span>
                 )}
               </div>
@@ -223,7 +202,7 @@ export function SprintsPage() {
       {dialog.kind === 'complete' && (
         <CompleteSprintDialog sprint={dialog.sprint} unfinished={tasksOf(dialog.sprint.id).filter((t) => t.status !== 'done').length}
           planned={planned} pending={complete.isPending} onClose={close}
-          onConfirm={(moveTo) => complete.mutate({ sprint: dialog.sprint, moveTo })} />
+          onConfirm={(moveTo) => complete.mutate({ sprint: dialog.sprint, moveTo, destination: destinationName(moveTo, planned) })} />
       )}
       {dialog.kind === 'delete' && (
         <ConfirmDialog title={`Delete ${dialog.sprint.name}?`} confirmLabel="Delete sprint" pendingLabel="Deleting…" danger pending={remove.isPending}
@@ -267,30 +246,5 @@ function MoveToSprint({ task, sprints, onMove }: { task: TaskSummary; sprints: S
         {sprints.map((s) => <option key={s.id} value={s.id}>{s.name}{s.status === 'active' ? ' (active)' : ''}</option>)}
       </select>
     </>
-  );
-}
-
-/** Asks where unfinished tasks should go: the next planned sprint (default) or the backlog. */
-function CompleteSprintDialog({ sprint, unfinished, planned, pending, onConfirm, onClose }: {
-  sprint: Sprint; unfinished: number; planned: Sprint[]; pending: boolean; onConfirm: (moveTo: string) => void; onClose: () => void;
-}) {
-  const selectId = useId();
-  const [moveTo, setMoveTo] = useState(planned[0]?.id ?? 'backlog');
-  return (
-    <ConfirmDialog title={`Complete ${sprint.name}?`} confirmLabel="Complete sprint" pendingLabel="Completing…" pending={pending}
-      onConfirm={() => onConfirm(moveTo)} onClose={onClose}>
-      <p>The sprint becomes read-only and another sprint can be started.</p>
-      {unfinished > 0 ? (
-        <div className="field" style={{ marginTop: 14 }}>
-          <label htmlFor={selectId}>Move the {plural(unfinished, 'unfinished task')} to</label>
-          <select id={selectId} className="input" value={moveTo} onChange={(e) => setMoveTo(e.target.value)}>
-            {planned.map((s) => <option key={s.id} value={s.id}>{s.name} (planned)</option>)}
-            <option value="backlog">Backlog</option>
-          </select>
-        </div>
-      ) : (
-        <p className="muted small" style={{ marginTop: 8 }}>All its tasks are done. 🎉</p>
-      )}
-    </ConfirmDialog>
   );
 }
