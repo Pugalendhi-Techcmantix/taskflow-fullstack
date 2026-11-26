@@ -27,7 +27,9 @@ export function ProjectSwitcher({ onNavigate }: { onNavigate: () => void }) {
           if (!key) return;
           rememberProject(key);
           onNavigate();
-          void navigate(`/projects/${key}`);
+          // Stay in the same section (Overview, Sprints…) when switching project.
+          const section = match?.params['*'];
+          void navigate(`/projects/${key}${section ? `/${section}` : ''}`);
         }}
       >
         {!current && <option value="">Choose a project…</option>}

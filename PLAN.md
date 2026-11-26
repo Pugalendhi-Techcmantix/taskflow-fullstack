@@ -124,8 +124,12 @@ Order follows dependencies: each module builds on the ones before it.
 ### Module 4 — Sprint Management
 | | |
 |---|---|
-| **Features** | Create a sprint (name, goal, start date, duration), start, complete (unfinished tasks move to the next sprint or the backlog), backlog view, **only one active sprint per project** (enforced in the database) |
-| **Tables** | `sprints` |
+| **Features** | Create a sprint (name — default "Sprint N", goal, start date, 1–4 week duration); edit (planned: everything; active: name, goal, end date; completed: read-only); start; complete; delete (planned only); **only one active sprint per project** (enforced in the database); Overview / Sprints tabs on each project; sidebar "Sprints" opens the last project's sprints |
+| **Lifecycle** | planned → active → completed. Starting keeps the planned dates and records when it really started. |
+| **Moved to Module 5** | The backlog view and "unfinished tasks move to the next sprint or the backlog on complete" need tasks, so they are built with tasks in Module 5. |
+| **Permissions** | Viewing follows project visibility; every change needs `sprint:manage` |
+| **URLs** | `/projects/:key/sprints`; `/sprints` redirects to the last project's sprints |
+| **Tables** | `sprints` (+ CHECK constraints on status, dates and name; at most one active sprint per project) |
 | **Done when** | The full sprint lifecycle works, and starting a second active sprint is refused. |
 
 ### Module 5 — Task & Issue Management
@@ -184,7 +188,7 @@ Order follows dependencies: each module builds on the ones before it.
 | 1 | Authentication & Users | ✅ Approved 2026-11-26 |
 | 2 | Roles & Permissions | ✅ Approved 2026-11-26 |
 | 3 | Projects | ✅ Approved 2026-11-26 |
-| 4 | Sprints | ⬜ Not started |
+| 4 | Sprints | ✅ Approved 2026-11-26 |
 | 5 | Tasks & Issues | ⬜ Not started |
 | 6 | Kanban Board | ⬜ Not started |
 | 7 | Search, Filters & Pagination | ⬜ Not started |
@@ -214,3 +218,6 @@ Legend: ⬜ not started · ⏳ in progress · 🧪 waiting for user test · ✅ 
 | 2026-11-26 | Roles are fixed (4) with text ids (`admin`, `project_manager`, `developer`, `viewer`); their permissions are editable | Matches the prototype; there's no need for custom roles in v1 |
 | 2026-11-26 | Project key can't be changed after creation; it's used in URLs (`/projects/TF`) | Task IDs (`TF-101`) and shared links would break if the key changed |
 | 2026-11-26 | Projects are visible to members plus all Admins; non-members get 404 | Admins must be able to reach every project; others shouldn't learn a project exists |
+| 2026-11-26 | "One active sprint per project" = PostgreSQL partial unique index (`WHERE status = 'active'`), added in raw SQL | It holds even when two people press Start at once. Prisma 7.10 can't declare partial indexes but leaves this one alone (verified: no drift). |
+| 2026-11-26 | Sprint dates are calendar days (`DATE`, "YYYY-MM-DD"); starting a sprint keeps its planned dates | No time-zone shifts; the real start time is recorded separately (`started_at`) |
+| 2026-11-26 | Backlog and "move unfinished tasks on complete" moved to Module 5 | They need tasks, which Module 5 adds |

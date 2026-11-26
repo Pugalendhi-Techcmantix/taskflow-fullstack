@@ -90,5 +90,5 @@ export function createProjectsService(repos: Pick<Repositories, 'projects'>) {
     if (!(await projects.removeMember(p.id, userId))) throw notFoundError('That person is not a member of this project');
   }
 
-  return { list, get, isKeyAvailable, create, update, remove, addMember, removeMember };
+  return { list, get, isKeyAvailable, create, update, remove, addMember, removeMember, visibleProject: visible };
 }

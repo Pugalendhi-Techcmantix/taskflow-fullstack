@@ -1,5 +1,5 @@
 import { useActionState, useId, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, NavLink, Outlet, useNavigate, useOutletContext, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fieldErrors, projectColorSchema, roleSummaryOf, updateProjectInput, type Project, type PublicUser } from '@taskflow/core';
 import { initials } from '../../app/AppShell';
@@ -10,16 +10,19 @@ import { ApiError } from '../../lib/http';
 import { reloadSessionUser, useCan, useSession } from '../auth/session';
 import { fetchMembers, teamKeys } from '../team/team-api';
 import { ColorPicker, ControlledField, TextAreaField } from './NewProjectDialog';
-import { addProjectMember, deleteProject, fetchProject, projectKeys, removeProjectMember, updateProject } from './projects-api';
+import { addProjectMember, deleteProject, fetchProject, projectKeys, rememberProject, removeProjectMember, updateProject } from './projects-api';
 
 const onMutationError = (err: unknown) => {
   toast(errorMessage(err), 'error');
   if (err instanceof ApiError && err.status === 403) void reloadSessionUser();
 };
 
-export function ProjectPage() {
+/** The project for the current /projects/:key/* page (provided by ProjectLayout). */
+export const useCurrentProject = () => useOutletContext<Project>();
+
+/** Shared frame of every project page: header + Overview / Sprints tabs + the section below. */
+export function ProjectLayout() {
   const key = (useParams().key ?? '').toUpperCase();
-  const can = useCan();
   const project = useQuery({ queryKey: projectKeys.detail(key), queryFn: ({ signal }) => fetchProject(key, signal), retry: false });
 
   if (project.status === 'pending') return <div className="card"><SkeletonRows rows={6} label="Loading project" /></div>;
@@ -49,6 +52,21 @@ export function ProjectPage() {
           </div>
         </div>
       </div>
+      <nav className="tabs-line" aria-label="Project sections">
+        <NavLink end to={`/projects/${p.key}`} onClick={() => rememberProject(p.key)}>Overview</NavLink>
+        <NavLink to={`/projects/${p.key}/sprints`} onClick={() => rememberProject(p.key)}>Sprints</NavLink>
+      </nav>
+      <Outlet context={p} />
+    </>
+  );
+}
+
+/** /projects/:key — members, settings, delete. */
+export function ProjectOverview() {
+  const p = useCurrentProject();
+  const can = useCan();
+  return (
+    <>
       <div className="grid-2 top">
         <MembersCard key={`members-${p.key}`} project={p} canManage={can('project:update')} />
         <div className="col-stack">

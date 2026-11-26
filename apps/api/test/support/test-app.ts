@@ -5,6 +5,7 @@ import type { EmailMessage, EmailSender } from '../../src/email/email-sender';
 import { createAccessService } from '../../src/modules/access/access.service';
 import { createAuthService } from '../../src/modules/auth/auth.service';
 import { createProjectsService } from '../../src/modules/projects/projects.service';
+import { createSprintsService } from '../../src/modules/sprints/sprints.service';
 import { createMemoryRepositories } from './memory-repositories';
 
 /** A full app wired to in-memory dummy data, a fake mailbox and a clock the test controls. No database needed. */
@@ -42,10 +43,12 @@ export function createTestApp() {
     config: { appUrl: 'http://localhost:5200', inviteTtlDays: 7 },
     now: clock.now,
   });
+  const projects = createProjectsService(store.repos);
   const app = createApp({
     auth,
     access,
-    projects: createProjectsService(store.repos),
+    projects,
+    sprints: createSprintsService({ repos: store.repos, projects, now: clock.now }),
     checkDatabase: async () => {},
     corsOrigins: ['http://localhost:5200'],
     secureCookies: false,

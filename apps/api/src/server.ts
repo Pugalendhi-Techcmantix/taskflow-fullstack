@@ -5,6 +5,7 @@ import { env, isProduction } from './env';
 import { createAccessService } from './modules/access/access.service';
 import { createAuthService } from './modules/auth/auth.service';
 import { createProjectsService } from './modules/projects/projects.service';
+import { createSprintsService } from './modules/sprints/sprints.service';
 import { createPrismaRepositories } from './prisma-repositories';
 
 /** Composition root: the only place that connects the app to the real database, email and environment. */
@@ -37,11 +38,13 @@ const access = createAccessService({
 });
 
 const projects = createProjectsService(repos);
+const sprints = createSprintsService({ repos, projects });
 
 const app = createApp({
   auth,
   access,
   projects,
+  sprints,
   checkDatabase: async () => {
     await prisma.$queryRaw`SELECT 1`;
   },

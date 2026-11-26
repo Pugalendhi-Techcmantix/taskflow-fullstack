@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useLocation } from 'react-router';
 import type { PublicUser } from '@taskflow/core';
 import { signOut, useSession } from '../features/auth/session';
 import { ProjectSwitcher } from '../features/projects/ProjectSwitcher';
@@ -50,9 +50,26 @@ export function AppShell() {
   );
 }
 
+/** Project sections with their own sidebar item (/projects/TF/sprints highlights "Sprints", not "Projects"). */
+const PROJECT_SECTIONS = ['sprints', 'board', 'tasks'];
+const sectionOf = (pathname: string) => /^\/projects\/[^/]+\/([^/]+)/.exec(pathname)?.[1];
+
 function SideLink({ item, onNavigate }: { item: (typeof NAV_ITEMS)[number]; onNavigate: () => void }) {
+  const { pathname } = useLocation();
+  const section = sectionOf(pathname);
+  const inSection = section !== undefined && PROJECT_SECTIONS.includes(section);
+  const custom =
+    item.path === '/projects' ? pathname.startsWith('/projects') && !inSection
+    : inSection && item.path === `/${section}` ? true
+    : undefined;
   return (
-    <NavLink to={item.path} end={item.path === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onNavigate}>
+    <NavLink
+      to={item.path}
+      end={item.path === '/'}
+      className={({ isActive }) => `nav-item ${(custom ?? isActive) ? 'active' : ''}`}
+      aria-current={custom === true ? 'page' : undefined}
+      onClick={onNavigate}
+    >
       <Icon name={item.icon} />
       <span>{item.label}</span>
     </NavLink>

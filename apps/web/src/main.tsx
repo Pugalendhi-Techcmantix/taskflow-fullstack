@@ -10,7 +10,9 @@ import { RequireAuth } from './features/auth/RequireAuth';
 import { restoreSession } from './features/auth/session';
 import { AcceptInvitePage } from './features/team/AcceptInvitePage';
 import { TeamPage } from './features/team/TeamPage';
-import { ProjectPage } from './features/projects/ProjectPage';
+import { ProjectLayout, ProjectOverview } from './features/projects/ProjectPage';
+import { ProjectSectionRedirect } from './features/projects/ProjectSectionRedirect';
+import { SprintsPage } from './features/sprints/SprintsPage';
 import { ProjectsPage } from './features/projects/ProjectsPage';
 import { queryClient } from './lib/query';
 import './styles/global.css';
@@ -30,7 +32,15 @@ const router = createBrowserRouter([
             children: [
               { index: true, element: <HomePage /> },
               { path: '/projects', element: <ProjectsPage /> },
-              { path: '/projects/:key', element: <ProjectPage /> },
+              {
+                path: '/projects/:key',
+                element: <ProjectLayout />,
+                children: [
+                  { index: true, element: <ProjectOverview /> },
+                  { path: 'sprints', element: <SprintsPage /> },
+                ],
+              },
+              { path: '/sprints', element: <ProjectSectionRedirect section="sprints" /> },
               { path: '/team', element: <TeamPage /> },
               ...NAV_ITEMS.filter((n) => n.path !== '/' && !n.built).map((n) => ({ path: n.path, element: <ComingSoonPage path={n.path} /> })),
               { path: '*', element: <NotFoundPage /> },

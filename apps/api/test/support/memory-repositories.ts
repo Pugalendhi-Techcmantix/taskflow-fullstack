@@ -9,6 +9,7 @@ import {
   type UserRepository,
 } from '../../src/modules/auth/auth.repository';
 import { ProjectKeyTakenError, type ProjectRecord, type ProjectRepository } from '../../src/modules/projects/projects.repository';
+import type { SprintRecord, SprintRepository } from '../../src/modules/sprints/sprints.repository';
 import type { Repositories } from '../../src/repositories';
 
 /**
@@ -187,6 +188,60 @@ export function createMemoryRepositories(now: () => Date) {
     },
   };
 
-  const repos: Repositories = { users: userRepo, refreshTokens: tokenRepo, roles: roleRepo, invites: inviteRepo, projects: projectRepo };
-  return { repos, users, tokens, grants, invites, projects };
+  /* ---------- sprints ---------- */
+
+  type StoredSprint = Omit<SprintRecord, 'projectKey'>;
+  const sprints: StoredSprint[] = [];
+  const toSprintRecord = (s: StoredSprint): SprintRecord => ({ ...s, projectKey: projects.find((p) => p.id === s.projectId)?.key ?? '?' });
+
+  const sprintRepo: SprintRepository = {
+    listByProject: async (projectId) => sprints.filter((s) => s.projectId === projectId).map(toSprintRecord),
+    findById: async (id) => {
+      const s = sprints.find((x) => x.id === id);
+      return s ? toSprintRecord(s) : null;
+    },
+    async create(data) {
+      const s: StoredSprint = { id: randomUUID(), ...data, status: 'planned', startedAt: null, completedAt: null, createdAt: now() };
+      sprints.push(s);
+      return toSprintRecord(s);
+    },
+    async update(id, changes) {
+      const s = sprints.find((x) => x.id === id);
+      if (!s) throw new Error('not found');
+      Object.assign(s, changes);
+      return toSprintRecord(s);
+    },
+    async start(id, at) {
+      const s = sprints.find((x) => x.id === id && x.status === 'planned');
+      if (!s) return 'not_planned';
+      // Same rule as the database's partial unique index
+      if (sprints.some((x) => x.projectId === s.projectId && x.status === 'active')) return 'another_active';
+      s.status = 'active';
+      s.startedAt = at;
+      return toSprintRecord(s);
+    },
+    async complete(id, at) {
+      const s = sprints.find((x) => x.id === id && x.status === 'active');
+      if (!s) return 'not_active';
+      s.status = 'completed';
+      s.completedAt = at;
+      return toSprintRecord(s);
+    },
+    async deletePlanned(id) {
+      const i = sprints.findIndex((x) => x.id === id && x.status === 'planned');
+      if (i < 0) return false;
+      sprints.splice(i, 1);
+      return true;
+    },
+  };
+
+  const repos: Repositories = {
+    users: userRepo,
+    refreshTokens: tokenRepo,
+    roles: roleRepo,
+    invites: inviteRepo,
+    projects: projectRepo,
+    sprints: sprintRepo,
+  };
+  return { repos, users, tokens, grants, invites, projects, sprints };
 }
