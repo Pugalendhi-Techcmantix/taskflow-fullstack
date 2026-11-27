@@ -7,6 +7,8 @@ import {
   TASK_PRIORITIES,
   TASK_PRIORITY_LABELS,
   TASK_STATUSES,
+  TASK_STATUS_GROUPS,
+  TASK_STATUS_GROUP_LABELS,
   TASK_STATUS_LABELS,
   TASK_TYPES,
   TASK_TYPE_LABELS,
@@ -15,7 +17,7 @@ import {
   sortSprints,
   sprintFilterSchema,
   taskPrioritySchema,
-  taskStatusSchema,
+  taskStatusFilterSchema,
   taskTypeSchema,
   type TaskListQuery,
   type TaskSummary,
@@ -122,9 +124,12 @@ export function TasksPage() {
       <div className="filters dense" role="search" aria-label="Filter tasks">
         <UrlTextInput className="input search" type="search" placeholder="Search by key or title…" aria-label="Search tasks by key or title"
           value={view.q} maxLength={SEARCH_TEXT_MAX} onValueChange={(q) => filter({ q })} />
-        <select className="input" aria-label="Status" value={view.status} onChange={(e) => filter({ status: pick(taskStatusSchema, e.target.value) })}>
+        <select className="input" aria-label="Status" value={view.status} onChange={(e) => filter({ status: pick(taskStatusFilterSchema, e.target.value) })}>
           <option value="">All statuses</option>
-          {TASK_STATUSES.map((s) => <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>)}
+          {TASK_STATUS_GROUPS.map((g) => <option key={g} value={g}>{TASK_STATUS_GROUP_LABELS[g]}</option>)}
+          <optgroup label="Status">
+            {TASK_STATUSES.map((s) => <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>)}
+          </optgroup>
         </select>
         <select className="input" aria-label="Priority" value={view.priority} onChange={(e) => filter({ priority: pick(taskPrioritySchema, e.target.value) })}>
           <option value="">All priorities</option>

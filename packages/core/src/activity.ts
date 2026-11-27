@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { permissionKeySchema, roleIdSchema } from './access';
+import { projectKeySchema } from './projects';
 import { taskStatusSchema } from './tasks';
 
 /* ---------- event groups (the prototype's "Event type" filter) ---------- */
@@ -105,7 +106,11 @@ export const activityCursor = (createdAt: string, id: string) => `${createdAt}~$
 export const activityQuery = z.object({
   user: z.uuid('Pick a person').optional(),
   type: activityTypeSchema.optional(),
+  /** Only this project (a key you can see; otherwise 404). */
+  project: projectKeySchema.optional(),
   cursor: activityCursorSchema.optional(),
+  /** Page size, at most ACTIVITY_PAGE_SIZE (the dashboard asks for a few). */
+  limit: z.coerce.number({ error: 'Limit must be a number' }).int('Limit must be a whole number').min(1, 'At least 1').max(30, 'At most 30').optional(),
 });
 export type ActivityQuery = z.output<typeof activityQuery>;
 

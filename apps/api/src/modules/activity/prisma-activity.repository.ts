@@ -23,7 +23,7 @@ const toRecord = (r: Row): ActivityRecord => ({
 const newestFirst = [{ createdAt: 'desc' }, { id: 'desc' }] satisfies Prisma.ActivityLogOrderByWithRelationInput[];
 
 /** Visibility and filters as a WHERE clause (see ActivityScope). */
-function whereOf({ scope, actorId, type }: ActivityFilter): Prisma.ActivityLogWhereInput {
+function whereOf({ scope, projectId, actorId, type }: ActivityFilter): Prisma.ActivityLogWhereInput {
   const visible: Prisma.ActivityLogWhereInput = scope.all
     ? {}
     : {
@@ -33,7 +33,7 @@ function whereOf({ scope, actorId, type }: ActivityFilter): Prisma.ActivityLogWh
         ],
       };
   return {
-    AND: [visible, ...(actorId ? [{ actorId }] : []), ...(type ? [{ type }] : [])],
+    AND: [visible, ...(projectId ? [{ projectId }] : []), ...(actorId ? [{ actorId }] : []), ...(type ? [{ type }] : [])],
   };
 }
 

@@ -2,7 +2,14 @@ import { activityPageResponse, taskHistoryResponse, type ActivityType } from '@t
 import { api } from '../../lib/http';
 import { taskKeys } from '../tasks/tasks-api';
 
-export type TimelineFilters = { user?: string | undefined; type?: ActivityType | undefined };
+export type TimelineFilters = {
+  user?: string | undefined;
+  type?: ActivityType | undefined;
+  /** Only this project (dashboard "Recent activity"). */
+  project?: string | undefined;
+  /** Page size (default 30). */
+  limit?: number | undefined;
+};
 
 export const activityKeys = {
   all: ['activity'] as const,
@@ -16,6 +23,8 @@ export function fetchTimeline(filters: TimelineFilters, cursor: string | null, s
   const params = new URLSearchParams();
   if (filters.user) params.set('user', filters.user);
   if (filters.type) params.set('type', filters.type);
+  if (filters.project) params.set('project', filters.project);
+  if (filters.limit) params.set('limit', String(filters.limit));
   if (cursor) params.set('cursor', cursor);
   const qs = params.toString();
   return api(`/api/activity${qs ? `?${qs}` : ''}`, { schema: activityPageResponse, ...(signal ? { signal } : {}) });

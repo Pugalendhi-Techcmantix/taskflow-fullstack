@@ -5,6 +5,7 @@ import { env, isProduction } from './env';
 import { createAccessService } from './modules/access/access.service';
 import { createActivityRecorder, createActivityService } from './modules/activity/activity.service';
 import { createAuthService } from './modules/auth/auth.service';
+import { createDashboardService } from './modules/dashboard/dashboard.service';
 import { createProjectsService } from './modules/projects/projects.service';
 import { createSearchService } from './modules/search/search.service';
 import { createSprintsService } from './modules/sprints/sprints.service';
@@ -56,6 +57,7 @@ const app = createApp({
   tasks,
   search,
   activity: createActivityService({ repos, projects }),
+  dashboard: createDashboardService({ repos, projects }),
   checkDatabase: async () => {
     await prisma.$queryRaw`SELECT 1`;
   },

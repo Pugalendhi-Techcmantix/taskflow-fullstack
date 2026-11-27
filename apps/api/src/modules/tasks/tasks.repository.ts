@@ -69,7 +69,10 @@ export type TaskChanges = Partial<{
  * Which tasks of a project a list shows. `q` matches the title or the key ("TF-10" finds TF-101…109),
  * ignoring case. A missing field means "all".
  */
-export type TaskFilter = { projectId: string } & Pick<TaskListQuery, 'q' | 'status' | 'priority' | 'type' | 'assignee' | 'sprint'>;
+export type TaskFilter = { projectId: string } & Pick<TaskListQuery, 'q' | 'status' | 'priority' | 'type' | 'assignee' | 'sprint'> & {
+  /** "YYYY-MM-DD": due dates before this day are overdue (status filter `overdue`). */
+  today: string;
+};
 
 /**
  * Status sorts in workflow order (To Do → Done), priority from Critical to Low, sprint by start date.
@@ -98,6 +101,14 @@ export interface TaskRepository {
   delete(id: string): Promise<void>;
   /** userId → number of assigned tasks that are not Done (all projects). */
   countOpenByAssignee(): Promise<Map<string, number>>;
+
+  /* ---------- dashboard (Module 10) ---------- */
+  /** Tasks per status in a project, or in one sprint of it. Every status is present (0 when none). */
+  countByStatus(scope: { projectId: string; sprintId?: string }): Promise<Record<TaskStatus, number>>;
+  /** Not Done and due before `today`. */
+  countOverdue(projectId: string, today: string): Promise<number>;
+  /** Open (not Done) tasks per assignee in a project; the `null` key = unassigned. */
+  countOpenByAssigneeIn(projectId: string): Promise<Map<string | null, number>>;
 
   /** Appends a subtask at the end of the task's checklist. */
   addSubtask(taskId: string, title: string): Promise<SubtaskRecord>;

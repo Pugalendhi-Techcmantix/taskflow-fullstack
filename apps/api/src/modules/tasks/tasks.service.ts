@@ -3,6 +3,7 @@ import {
   MIN_POSITION_GAP,
   TASK_CHANGE_FIELDS,
   findMentions,
+  localIsoDate,
   pageCount,
   positionBetween,
   taskKey,
@@ -118,7 +119,7 @@ export function createTasksService(deps: {
   async function list(actor: Actor, projectKey: string, query: TaskListQuery): Promise<TaskPage> {
     const project = await deps.projects.visibleProject(actor, projectKey);
     const { q, status, priority, type, assignee, sprint, sort, dir, size } = query;
-    const filter: TaskFilter = { projectId: project.id, q, status, priority, type, assignee, sprint };
+    const filter: TaskFilter = { projectId: project.id, q, status, priority, type, assignee, sprint, today: localIsoDate(now()) };
     const total = await tasks.countMatching(filter);
     const page = Math.min(query.page, pageCount(total, size));
     const rows = total === 0 ? [] : await tasks.listPage(filter, { sort, dir }, { offset: (page - 1) * size, limit: size });

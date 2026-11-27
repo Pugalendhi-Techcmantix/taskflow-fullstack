@@ -22,6 +22,9 @@ export function parseIsoDate(value: string): Date | null {
   return Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== value ? null : d;
 }
 export const toIsoDate = (d: Date) => d.toISOString().slice(0, 10);
+/** The calendar day of `d` in this machine's time zone (not UTC), "YYYY-MM-DD". */
+export const localIsoDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 export const addDays = (isoDate: string, days: number) => {
   const d = parseIsoDate(isoDate);
   return d ? toIsoDate(new Date(d.getTime() + days * DAY_MS)) : isoDate;

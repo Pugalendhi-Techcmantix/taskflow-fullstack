@@ -1,46 +1,6 @@
 import { Link, isRouteErrorResponse, useRouteError } from 'react-router';
-import { useSession } from '../features/auth/session';
 import { Icon } from './icons';
 import { NAV_ITEMS } from './nav';
-
-/** Home page until the real dashboard arrives (Module 10). */
-export function HomePage() {
-  const session = useSession();
-  if (session.status !== 'authenticated') return null;
-  const { user } = session;
-  const firstName = user.name.split(' ')[0] ?? user.name;
-  const joined = new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-  return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>Welcome, {firstName}</h1>
-          <p className="sub">You&apos;re signed in to TaskFlow.</p>
-        </div>
-      </div>
-      <div className="grid-2">
-        <section className="card" aria-labelledby="acc-h">
-          <h2 id="acc-h" className="card-title">Your account</h2>
-          <dl className="details">
-            <dt>Name</dt><dd>{user.name}</dd>
-            <dt>Email</dt><dd>{user.email}</dd>
-            <dt>Role</dt><dd>{user.role.name}</dd>
-            <dt>Member since</dt><dd>{joined}</dd>
-          </dl>
-        </section>
-        <section className="card" aria-labelledby="next-h">
-          <h2 id="next-h" className="card-title">Coming next</h2>
-          <ul className="soon-list">
-            {NAV_ITEMS.filter((n) => !n.built).toSorted((a, b) => a.module - b.module).map((n) => (
-              <li key={n.path}><Icon name={n.icon} size={16} /><span>{n.label}</span><span className="pill">Module {n.module}</span></li>
-            ))}
-          </ul>
-        </section>
-      </div>
-    </>
-  );
-}
 
 /** Placeholder for pages whose module is not built yet. */
 export function ComingSoonPage({ path }: { path: string }) {

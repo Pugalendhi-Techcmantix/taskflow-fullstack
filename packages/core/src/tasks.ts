@@ -213,6 +213,16 @@ export const SEARCH_TEXT_MAX = 100;
 export const searchTextSchema = z.string().trim().max(SEARCH_TEXT_MAX, `Use at most ${SEARCH_TEXT_MAX} characters`);
 /** A member id, or "none" for unassigned tasks. */
 export const assigneeFilterSchema = z.union([z.literal('none'), z.uuid()], { error: 'Pick a member or "none"' });
+/**
+ * Status filter of the Tasks table: one status, or a group. `open` = everything not Done;
+ * `overdue` = not Done and the due date has passed (the dashboard cards link to these).
+ */
+export const TASK_STATUS_GROUPS = ['open', 'overdue'] as const;
+export type TaskStatusGroup = (typeof TASK_STATUS_GROUPS)[number];
+export const TASK_STATUS_GROUP_LABELS: Record<TaskStatusGroup, string> = { open: 'Open (not done)', overdue: 'Overdue' };
+export const taskStatusFilterSchema = z.union([taskStatusSchema, z.enum(TASK_STATUS_GROUPS)], { error: 'Pick a status' });
+export type TaskStatusFilter = z.infer<typeof taskStatusFilterSchema>;
+
 /** A sprint id, or "backlog" for tasks in no sprint. */
 export const sprintFilterSchema = z.union([z.literal('backlog'), z.uuid()], { error: 'Pick a sprint or "backlog"' });
 
@@ -222,7 +232,7 @@ export const sprintFilterSchema = z.union([z.literal('backlog'), z.uuid()], { er
  */
 export const taskListQuery = z.object({
   q: searchTextSchema.default(''),
-  status: taskStatusSchema.optional(),
+  status: taskStatusFilterSchema.optional(),
   priority: taskPrioritySchema.optional(),
   type: taskTypeSchema.optional(),
   assignee: assigneeFilterSchema.optional(),

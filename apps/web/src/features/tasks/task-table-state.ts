@@ -7,7 +7,7 @@ import {
   assigneeFilterSchema,
   sprintFilterSchema,
   taskPrioritySchema,
-  taskStatusSchema,
+  taskStatusFilterSchema,
   taskTypeSchema,
   type TaskListQuery,
   type TaskSort,
@@ -22,7 +22,7 @@ import { z } from 'zod';
  */
 export const taskTableState = z.object({
   q: z.string().max(SEARCH_TEXT_MAX).catch(''),
-  status: taskStatusSchema.or(z.literal('')).catch(''),
+  status: taskStatusFilterSchema.or(z.literal('')).catch(''),
   priority: taskPrioritySchema.or(z.literal('')).catch(''),
   type: taskTypeSchema.or(z.literal('')).catch(''),
   assignee: assigneeFilterSchema.or(z.literal('')).catch(''),

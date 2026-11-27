@@ -98,7 +98,7 @@ Checked side by side on 2026-11-26 (Projects, Sprints, Team & roles, Sign in). T
 | **History** list inside the task dialog | Task dialog | ✅ Module 8 |
 | Activity history page (day groups, Person / Event type filters, Open link) | Activity history | ✅ Module 8 (also shows the project name on each line, since the timeline spans all projects) |
 | Notification bell with unread count | Top bar | Module 9 |
-| Dashboard (stats, burndown, workload, my tasks, recent activity) | Dashboard | Module 10 |
+| Dashboard (stats, burndown, workload, my tasks, recent activity) | Dashboard | ✅ Module 10 (workload bars use one colour, the avatar shows the person) |
 
 ---
 
@@ -207,7 +207,8 @@ Order follows dependencies: each module builds on the ones before it.
 |---|---|
 | **Features** | Summary numbers (open, in progress, done, overdue), sprint burndown chart, tasks by status, open tasks per person, my open tasks, recent activity |
 | **Done when** | All numbers come from real data and match the Tasks page. |
-| **Status** | ⬜ Not started |
+| **Built** | `GET /api/projects/:key/dashboard` (counts by the database); `GET /api/activity?project=&limit=`; Tasks status filter groups `?status=open` / `?status=overdue`; Dashboard at `/` (`?project=KEY`, else last project, else first): 4 summary cards linking to the matching Tasks view, sprint burndown (hover/keyboard crosshair, legend, table view), tasks by status, open tasks per person, my open tasks (open in the dialog), recent activity |
+| **Status** | ✅ Approved 2026-11-27 |
 
 ### Module 11 — Finishing (quality & delivery)
 | | |
@@ -232,8 +233,8 @@ Order follows dependencies: each module builds on the ones before it.
 | 6 | Kanban Board | ✅ Approved 2026-11-26 |
 | 7 | Search, Filters & Pagination | ✅ Approved 2026-11-27 |
 | 8 | Activity History | ✅ Approved 2026-11-27 |
-| 9 | Real-Time Notifications | ⬜ Not started |
-| 10 | Dashboard & Analytics | ⬜ Not started |
+| 9 | Real-Time Notifications | ⏳ In progress |
+| 10 | Dashboard & Analytics | ✅ Approved 2026-11-27 |
 | 11 | Finishing | ⬜ Not started |
 
 Legend: ⬜ not started · ⏳ in progress · 🧪 waiting for user test · ✅ approved and committed
@@ -279,3 +280,9 @@ Legend: ⬜ not started · ⏳ in progress · 🧪 waiting for user test · ✅ 
 | 2026-11-27 | Autosaved description edits by the same person within 10 minutes = one entry; reordering cards inside a board column isn't recorded | Keeps the history readable |
 | 2026-11-27 | Each entry gets a strictly later time than the previous one (≤ 1 ms later) and the timeline pages by (created_at, id) | Several fields saved at once keep their order; "Load more" never skips or repeats an entry |
 | 2026-11-27 | History starts at Module 8; earlier changes can't be rebuilt | User agreed |
+| 2026-11-27 | Module 10 (Dashboard) is built before Module 9 (Real-time notifications) | User's choice; the dashboard needs nothing from Module 9 |
+| 2026-11-27 | Dashboard lives at `/` and shows one project: `?project=KEY`, else the last project opened, else the first; the sidebar switcher stays on the dashboard | User's choice (recommended); same "current project" rule as the other sections, and the URL is shareable |
+| 2026-11-27 | Dashboard numbers are counted with the same filters as the Tasks table; new status groups `open` (not done) and `overdue` (not done, due before today) let each card link to exactly the tasks it counts | "Numbers match the Tasks page" is checked by tests on both the in-memory and the real database |
+| 2026-11-27 | "Today" for overdue = the server's calendar date; the burndown uses the viewer's calendar (done times are turned into local days in the browser) | Counts must agree between the card and the table (both server-side); the chart is personal and should match the viewer's day |
+| 2026-11-27 | Burndown = sprint total − work Done on or before each day (from `tasks.done_at`), counting tasks when nothing has points | User's choice (recommended): simple and testable. Limitation: uses the sprint as it is now (tasks added mid-sprint count from day 1; a reopened task loses its done day) |
+| 2026-11-27 | Charts follow the dataviz checklist: palette validated (light + dark), 2px lines, legend, crosshair tooltip on hover and ←/→ keys, table view, previous render dimmed while refreshing | Accessible and readable; no value is only reachable by hovering |

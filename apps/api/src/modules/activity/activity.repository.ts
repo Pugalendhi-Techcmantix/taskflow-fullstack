@@ -31,6 +31,7 @@ export type ActivityScope = { userId: string; all: boolean; userEvents: boolean 
 
 export type ActivityFilter = {
   scope: ActivityScope;
+  projectId?: string | undefined;
   actorId?: string | undefined;
   type?: ActivityType | undefined;
 };

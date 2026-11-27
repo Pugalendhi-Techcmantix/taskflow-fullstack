@@ -8,6 +8,7 @@ import {
   taskTypeSchema,
   toIsoDate,
   type TaskSort,
+  type TaskStatus,
 } from '@taskflow/core';
 import { z } from 'zod';
 import { Prisma, type PrismaClient } from '../../../generated/client';
@@ -116,7 +117,9 @@ function filterSql(f: TaskFilter): Prisma.Sql {
     const pattern = likePattern(f.q);
     parts.push(Prisma.sql`(t.title ILIKE ${pattern} OR ${TASK_KEY_SQL} ILIKE ${pattern})`);
   }
-  if (f.status) parts.push(Prisma.sql`t.status = ${f.status}`);
+  if (f.status === 'open') parts.push(Prisma.sql`t.status <> 'done'`);
+  else if (f.status === 'overdue') parts.push(Prisma.sql`t.status <> 'done' AND t.due_date < ${f.today}::date`);
+  else if (f.status) parts.push(Prisma.sql`t.status = ${f.status}`);
   if (f.priority) parts.push(Prisma.sql`t.priority = ${f.priority}`);
   if (f.type) parts.push(Prisma.sql`t.type = ${f.type}`);
   if (f.assignee === 'none') parts.push(Prisma.sql`t.assignee_id IS NULL`);
@@ -215,6 +218,18 @@ export function createPrismaTaskRepository(prisma: PrismaClient): TaskRepository
     },
     async delete(id) {
       await prisma.task.delete({ where: { id } });
+    },
+    async countByStatus({ projectId, sprintId }) {
+      const rows = await prisma.task.groupBy({ by: ['status'], where: { projectId, ...(sprintId ? { sprintId } : {}) }, _count: { _all: true } });
+      const out: Record<TaskStatus, number> = { todo: 0, in_progress: 0, in_review: 0, done: 0 };
+      for (const r of rows) out[taskStatusSchema.parse(r.status)] = r._count._all;
+      return out;
+    },
+    countOverdue: (projectId, today) =>
+      prisma.task.count({ where: { projectId, status: { not: 'done' }, dueDate: { lt: toDbDate(today) } } }),
+    async countOpenByAssigneeIn(projectId) {
+      const rows = await prisma.task.groupBy({ by: ['assigneeId'], where: { projectId, status: { not: 'done' } }, _count: { _all: true } });
+      return new Map(rows.map((r) => [r.assigneeId, r._count._all] as const));
     },
     async countOpenByAssignee() {
       const rows = await prisma.task.groupBy({ by: ['assigneeId'], where: { status: { not: 'done' }, assigneeId: { not: null } }, _count: { _all: true } });

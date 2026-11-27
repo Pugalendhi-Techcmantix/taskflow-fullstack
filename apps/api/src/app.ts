@@ -9,6 +9,8 @@ import { createActorLookup, createPermissionGuard, type Guards } from './modules
 import { createActivityRouter, createTaskHistoryRouter } from './modules/activity/activity.routes';
 import type { ActivityService } from './modules/activity/activity.service';
 import { createAuthRouter } from './modules/auth/auth.routes';
+import { createDashboardRouter } from './modules/dashboard/dashboard.routes';
+import type { DashboardService } from './modules/dashboard/dashboard.service';
 import type { AuthService } from './modules/auth/auth.service';
 import { createRequireAuth } from './modules/auth/require-auth';
 import { createProjectsRouter } from './modules/projects/projects.routes';
@@ -29,6 +31,7 @@ export type AppDeps = {
   tasks: TasksService;
   search: SearchService;
   activity: ActivityService;
+  dashboard: DashboardService;
   /** Resolves when the database answers; rejects otherwise. */
   checkDatabase: () => Promise<void>;
   corsOrigins: string[];
@@ -66,6 +69,7 @@ export function createApp(deps: AppDeps) {
   app.use('/api/projects/:key/tasks', createTasksRouter(deps.tasks, guards));
   app.use('/api/projects/:key/board', createBoardRouter(deps.tasks, guards));
   app.use('/api/projects/:key/planning', createPlanningRouter(deps.tasks, guards));
+  app.use('/api/projects/:key/dashboard', createDashboardRouter(deps.dashboard, guards));
   app.use('/api/search', createSearchRouter(deps.search, guards));
   app.use('/api/activity', createActivityRouter(deps.activity, guards));
   app.use('/api/projects', createProjectsRouter(deps.projects, guards));

@@ -2,6 +2,7 @@ export * from './access';
 export * from './activity';
 export * from './async';
 export * from './auth';
+export * from './dashboard';
 export * from './errors';
 export * from './projects';
 export * from './search';

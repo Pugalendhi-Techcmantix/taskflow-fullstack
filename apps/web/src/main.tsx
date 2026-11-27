@@ -3,12 +3,13 @@ import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import { AppShell } from './app/AppShell';
-import { ComingSoonPage, HomePage, NotFoundPage, RouteErrorPage } from './app/pages';
+import { ComingSoonPage, NotFoundPage, RouteErrorPage } from './app/pages';
 import { NAV_ITEMS } from './app/nav';
 import { AuthPage } from './features/auth/AuthPage';
 import { RequireAuth } from './features/auth/RequireAuth';
 import { restoreSession } from './features/auth/session';
 import { ActivityPage } from './features/activity/ActivityPage';
+import { DashboardPage } from './features/dashboard/DashboardPage';
 import { AcceptInvitePage } from './features/team/AcceptInvitePage';
 import { TeamPage } from './features/team/TeamPage';
 import { ProjectLayout, ProjectOverview } from './features/projects/ProjectPage';
@@ -33,7 +34,7 @@ const router = createBrowserRouter([
           {
             element: <AppShell />,
             children: [
-              { index: true, element: <HomePage /> },
+              { index: true, element: <DashboardPage /> },
               { path: '/projects', element: <ProjectsPage /> },
               {
                 path: '/projects/:key',

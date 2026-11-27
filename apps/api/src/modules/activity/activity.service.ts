@@ -95,16 +95,19 @@ export function createActivityService(deps: {
 
   /** The workspace timeline, newest first, one page at a time. */
   async function list(actor: Actor, query: ActivityQuery): Promise<ActivityPage> {
-    const filter: ActivityFilter = { scope: scopeOf(actor), actorId: query.user, type: query.type };
+    // A project filter must name a project you can see (404 otherwise, like everywhere else).
+    const project = query.project ? await deps.projects.visibleProject(actor, query.project) : null;
+    const filter: ActivityFilter = { scope: scopeOf(actor), projectId: project?.id, actorId: query.user, type: query.type };
+    const size = query.limit ?? ACTIVITY_PAGE_SIZE;
     const [at, id] = query.cursor?.split('~') ?? [];
     const before = at && id ? { createdAt: new Date(at), id } : null;
     // One extra row tells whether there is a next page.
-    const [rows, total] = await Promise.all([activity.list(filter, { before, limit: ACTIVITY_PAGE_SIZE + 1 }), activity.count(filter)]);
-    const page = rows.slice(0, ACTIVITY_PAGE_SIZE);
+    const [rows, total] = await Promise.all([activity.list(filter, { before, limit: size + 1 }), activity.count(filter)]);
+    const page = rows.slice(0, size);
     const last = page.at(-1);
     return {
       entries: page.map(toActivityEntry),
-      nextCursor: rows.length > ACTIVITY_PAGE_SIZE && last ? activityCursor(last.createdAt.toISOString(), last.id) : null,
+      nextCursor: rows.length > size && last ? activityCursor(last.createdAt.toISOString(), last.id) : null,
       total,
     };
   }

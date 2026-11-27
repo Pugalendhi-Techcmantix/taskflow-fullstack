@@ -11,6 +11,7 @@ import {
   type PermissionKey,
   type RoleId,
   type TaskSort,
+  type TaskStatus,
 } from '@taskflow/core';
 import type { InviteRecord, InviteRepository, RoleRepository } from '../../src/modules/access/access.repository';
 import type { ActivityFilter, ActivityRecord, ActivityRepository, NewActivity } from '../../src/modules/activity/activity.repository';
@@ -315,7 +316,10 @@ export function createMemoryRepositories(now: () => Date) {
   const matchesFilter = (f: TaskFilter) => (t: StoredTask) =>
     t.projectId === f.projectId
     && (!f.q || textMatches(t, f.q))
-    && (!f.status || t.status === f.status)
+    && (!f.status
+      || (f.status === 'open' ? t.status !== 'done'
+        : f.status === 'overdue' ? t.status !== 'done' && t.dueDate !== null && t.dueDate < f.today
+          : t.status === f.status))
     && (!f.priority || t.priority === f.priority)
     && (!f.type || t.type === f.type)
     && (!f.assignee || (f.assignee === 'none' ? t.assigneeId === null : t.assigneeId === f.assignee))
@@ -379,6 +383,18 @@ export function createMemoryRepositories(now: () => Date) {
     async delete(id) {
       const i = tasks.findIndex((x) => x.id === id);
       if (i >= 0) tasks.splice(i, 1);
+    },
+    async countByStatus({ projectId, sprintId }) {
+      const out: Record<TaskStatus, number> = { todo: 0, in_progress: 0, in_review: 0, done: 0 };
+      for (const t of tasks) if (t.projectId === projectId && (!sprintId || t.sprintId === sprintId)) out[t.status]++;
+      return out;
+    },
+    countOverdue: async (projectId, today) =>
+      tasks.filter((t) => t.projectId === projectId && t.status !== 'done' && t.dueDate !== null && t.dueDate < today).length,
+    async countOpenByAssigneeIn(projectId) {
+      const out = new Map<string | null, number>();
+      for (const t of tasks) if (t.projectId === projectId && t.status !== 'done') out.set(t.assigneeId, (out.get(t.assigneeId) ?? 0) + 1);
+      return out;
     },
     async countOpenByAssignee() {
       const out = new Map<string, number>();
@@ -479,9 +495,10 @@ export function createMemoryRepositories(now: () => Date) {
       createdAt: a.createdAt,
     };
   };
-  const activityVisible = ({ scope, actorId, type }: ActivityFilter) => (a: StoredActivity) => {
+  const activityVisible = ({ scope, projectId, actorId, type }: ActivityFilter) => (a: StoredActivity) => {
     const member = projects.find((p) => p.id === a.projectId)?.members.some((m) => m.userId === scope.userId) ?? false;
     return (scope.all || member || (scope.userEvents && a.type === 'user'))
+      && (!projectId || a.projectId === projectId)
       && (!actorId || a.actorId === actorId)
       && (!type || a.type === type);
   };
