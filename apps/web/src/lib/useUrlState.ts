@@ -14,7 +14,11 @@ export function useUrlState<S extends z.ZodObject>(schema: S) {
   const value: z.output<S> = schema.parse(Object.fromEntries(params));
   const isDefault = Object.entries(value).every(([k, v]) => v === defaults.get(k));
 
-  /** Updates some fields. Replaces the history entry, so typing in a filter doesn't flood the Back button. */
+  /**
+   * Updates some fields. Replaces the history entry, so typing in a filter doesn't flood the Back button.
+   * The URL updates a moment later (React Router navigates asynchronously), so a text box must not read
+   * its value straight from here while the user types. Use <UrlTextInput>.
+   */
   const set = (patch: Partial<z.output<S>>) =>
     setParams((prev) => {
       const next = new URLSearchParams(prev);

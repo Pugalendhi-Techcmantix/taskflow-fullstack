@@ -1,6 +1,7 @@
 import type { InviteRepository, RoleRepository } from './modules/access/access.repository';
 import type { RefreshTokenRepository, UserRepository } from './modules/auth/auth.repository';
 import type { ProjectRepository } from './modules/projects/projects.repository';
+import type { SearchRepository } from './modules/search/search.repository';
 import type { SprintRepository } from './modules/sprints/sprints.repository';
 import type { TaskRepository } from './modules/tasks/tasks.repository';
 
@@ -13,4 +14,5 @@ export type Repositories = {
   projects: ProjectRepository;
   sprints: SprintRepository;
   tasks: TaskRepository;
+  search: SearchRepository;
 };

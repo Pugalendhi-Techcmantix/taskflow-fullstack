@@ -93,7 +93,8 @@ Checked side by side on 2026-11-26 (Projects, Sprints, Team & roles, Sign in). T
 | **Backlog** card with "Move to sprint…" | Sprints | ✅ Module 5 |
 | **Open tasks** column | Team & roles | ✅ Module 5 |
 | **Open board** button on the active sprint | Sprints | ✅ Module 6 |
-| Global search bar ("press /") and keyboard-shortcut help (`?`, `C`, `G` then a letter) | Top bar | Module 7 |
+| Global search bar ("press /") and keyboard-shortcut help (`?`, `C`, `G` then a letter) | Top bar | ✅ Module 7 |
+| Tasks table pager ("Showing 1–8 of 25", rows per page, ‹ 1 2 3 ›) | Tasks & issues | ✅ Module 7 (sizes 10/25/50/100 instead of 5/8/15/25, see Decisions log) |
 | **History** list inside the task dialog | Task dialog | Module 8 |
 | Notification bell with unread count | Top bar | Module 9 |
 | Dashboard (stats, burndown, workload, my tasks, recent activity) | Dashboard | Module 10 |
@@ -180,7 +181,8 @@ Order follows dependencies: each module builds on the ones before it.
 |---|---|
 | **Features** | A type-safe `useUrlState<T>` hook with **all filters, sorting and paging in the URL**; filtering, sorting and pagination done on the server; global search (tasks + projects) with debounce and request cancellation; Copy link button |
 | **Done when** | Refreshing or opening a shared link shows the exact same view, and only one page of rows is ever loaded. |
-| **Status** | ⬜ Not started |
+| **Built** | `GET /api/projects/:key/tasks?q&status&priority&type&assignee&sprint&sort&dir&page&size` (filtered, sorted and paged in SQL; returns `{ tasks, total, page, size }`); `GET /api/search?q=` (≤7 tasks, ≤3 projects, only visible projects); `GET /api/projects/:key/planning` (all tasks, for the Sprints page); Tasks table with filters, server sort and pager in the URL; top-bar global search (combobox, ↑/↓/Enter/Esc); keyboard shortcuts + help dialog; Sprint "see all" opens the table filtered to that sprint |
+| **Status** | ✅ Approved 2026-11-27 |
 
 ### Module 8 — Activity History
 | | |
@@ -226,7 +228,7 @@ Order follows dependencies: each module builds on the ones before it.
 | 4 | Sprints | ✅ Approved 2026-11-26 |
 | 5 | Tasks & Issues | ✅ Approved 2026-11-26 |
 | 6 | Kanban Board | ✅ Approved 2026-11-26 |
-| 7 | Search, Filters & Pagination | ⬜ Not started |
+| 7 | Search, Filters & Pagination | ✅ Approved 2026-11-27 |
 | 8 | Activity History | ⬜ Not started |
 | 9 | Real-Time Notifications | ⬜ Not started |
 | 10 | Dashboard & Analytics | ⬜ Not started |
@@ -261,3 +263,11 @@ Legend: ⬜ not started · ⏳ in progress · 🧪 waiting for user test · ✅ 
 | 2026-11-26 | Board query key sits under the task-list key | Every task change that refreshes the Tasks table also refreshes the board, without extra wiring |
 | 2026-11-26 | `useUrlState<T>` (Zod object, each field `.catch(default)`) built in Module 6 for the board filters; Module 7 reuses it for the Tasks table | The prototype keeps board filters in the URL; hand-edited or unknown values fall back to "all" |
 | 2026-11-26 | Keyboard moves are custom (Shift + arrows), not dnd-kit's keyboard sensor | The prototype's shortcuts; dnd-kit handles mouse and touch only |
+| 2026-11-27 | Tasks table page sizes 10 / 25 / 50 / 100, default 25 (prototype: 5 / 8 / 15 / 25, default 8) | User asked for a size that suits real projects; 8 rows is too few once a project has real data |
+| 2026-11-27 | Task list filtering, sorting and paging run in SQL (`$queryRaw` with bound parameters for the page of ids, then Prisma loads those rows) | Prisma can't sort status/priority in workflow order (`array_position`) or put empty values last in both directions; sort expressions come only from a fixed whitelist |
+| 2026-11-27 | Search text matches the title or the key (`TF-10` finds TF-101…109), case-insensitive; `%` and `_` are matched literally | Same rule in the table, the global search and the in-memory test repository |
+| 2026-11-27 | A page past the end returns the last page (not an error); an invalid query value is a 400 | A stale shared link still shows rows; hand-made API calls get a clear error |
+| 2026-11-27 | Sprints page reads `GET /api/projects/:key/planning` (all tasks) | The Tasks endpoint is now always paged; sprint planning genuinely needs every task |
+| 2026-11-27 | Debounce = the query function waits 250 ms on an abortable timer; TanStack Query aborts it when the text changes | Debounce and request cancellation with no `useEffect`; only changed search text waits, paging and filters load at once |
+| 2026-11-27 | Text filters kept in the URL use `<UrlTextInput>` (local text while typing, synced from the URL when it changes from outside) | React Router updates the URL asynchronously, so a box reading straight from the URL dropped characters when typing fast (also fixed on the board) |
+| 2026-11-27 | Global search: picking a project opens its Board; picking a task opens `/projects/KEY/tasks?task=KEY-N` | Same as the prototype |

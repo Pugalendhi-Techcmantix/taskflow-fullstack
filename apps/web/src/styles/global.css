@@ -429,3 +429,46 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 11px; background: 
 .add-card:hover { background: var(--surface); color: var(--text); }
 @media (prefers-reduced-motion: reduce) { .kcard.reverted { animation: none; } .kcard.overlay { transform: none; } }
 @media (max-width: 600px) { .filters .input, .filters .search { flex: 1 1 140px; min-width: 0; } }
+
+/* Module 7: global search, pager, keyboard shortcuts (prototype) */
+.search-wrap { position: relative; flex: 1; max-width: 480px; min-width: 0; }
+.search-wrap .si { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--faint); display: inline-flex; pointer-events: none; }
+.search-wrap .input { padding-left: 34px; background: var(--surface-2); border-color: transparent; width: 100%; }
+.search-wrap .input:focus { background: var(--surface); }
+.search-pop { position: absolute; top: 44px; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 6px; max-height: 420px; overflow: auto; z-index: 25; }
+.sr-sec { font-size: 11px; font-weight: 600; color: var(--faint); text-transform: uppercase; padding: 8px 10px 4px; }
+.sr-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px; }
+[role="option"].sr-item { cursor: pointer; }
+.sr-item.active, [role="option"].sr-item:hover { background: var(--surface-2); }
+.sr-item.active { box-shadow: inset 2px 0 0 var(--accent); }
+.sr-item .btn { margin-left: auto; }
+.sr-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-item .proj-key.sm { width: 22px; height: 22px; font-size: 9px; border-radius: 6px; }
+
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 14px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--border); }
+.pager-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pager-controls .input { width: auto; padding: 5px 26px 5px 8px; }
+.pager .pages { display: flex; gap: 4px; align-items: center; }
+.pager .pages button { min-width: 32px; height: 32px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.pager .pages button:hover:not(:disabled) { background: var(--surface-2); }
+.pager .pages button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pager .pages button:disabled { opacity: .4; cursor: not-allowed; }
+.pager .pages .gap { min-width: 20px; text-align: center; }
+[data-theme="dark"] .pager .pages button.active { color: #11131a; }
+table.grid.busy tbody { opacity: .55; transition: opacity .15s; }
+
+dialog.modal.shortcuts { width: min(680px, calc(100% - 32px)); }
+.sc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; margin: 0; }
+.sc-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.sc-row dd { display: flex; gap: 4px; flex: none; margin: 0; }
+.sc-note { margin: 14px 0 16px; }
+.menu-kbd { margin-left: auto; }
+/* Tasks table: six filters + Clear filters + Copy link fit on one row at 1440 px */
+.filters.dense .input { min-width: 132px; }
+.filters.dense .search { min-width: 200px; }
+@media (max-width: 860px) { .sc-grid { grid-template-columns: 1fr; } }
+@media (max-width: 520px) {
+  .pager { justify-content: center; }
+  /* the box is narrow on phones: let the results use the full width under the top bar */
+  .search-pop { position: fixed; top: 60px; left: 8px; right: 8px; max-height: calc(100dvh - 76px); }
+}

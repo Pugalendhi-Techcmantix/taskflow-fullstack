@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createCommentInput, type Project, type TaskDetail, type TaskSummary } from '@taskflow/core';
+import { createCommentInput, type Project, type TaskDetail } from '@taskflow/core';
 import { Avatar } from '../../app/Avatar';
 import { errorMessage } from '../../app/feedback';
 import { Icon } from '../../app/icons';
@@ -8,7 +8,7 @@ import { toast } from '../../app/toast';
 import { timeAgo } from '../../lib/dates';
 import { ApiError } from '../../lib/http';
 import { reloadSessionUser, useCan, useSession } from '../auth/session';
-import { addComment, addSubtask, deleteComment, deleteSubtask, taskKeys, updateSubtask } from './tasks-api';
+import { addComment, addSubtask, deleteComment, deleteSubtask, patchTaskLists, taskKeys, updateSubtask } from './tasks-api';
 
 type Ctx = { project: Project; task: TaskDetail };
 
@@ -16,7 +16,6 @@ type Ctx = { project: Project; task: TaskDetail };
 function useTaskItemMutation<V>(ctx: Ctx, fn: (vars: V) => Promise<{ task: TaskDetail }>, optimistic?: (task: TaskDetail, vars: V) => TaskDetail) {
   const qc = useQueryClient();
   const detailKey = taskKeys.detail(ctx.project.key, ctx.task.number);
-  const listKey = taskKeys.list(ctx.project.key);
   return useMutation({
     mutationFn: fn,
     onMutate: async (vars) => {
@@ -34,9 +33,7 @@ function useTaskItemMutation<V>(ctx: Ctx, fn: (vars: V) => Promise<{ task: TaskD
     onSuccess: ({ task }) => {
       qc.setQueryData(detailKey, { task });
       // keep the table's counters (subtasks done, comments) in step
-      qc.setQueryData<{ tasks: TaskSummary[] }>(listKey, (old) =>
-        old && { tasks: old.tasks.map((x) => (x.id === task.id ? { ...x, subtasks: task.subtasks, commentCount: task.commentCount } : x)) },
-      );
+      patchTaskLists(qc, ctx.project.key, (x) => (x.id === task.id ? { ...x, subtasks: task.subtasks, commentCount: task.commentCount } : x));
     },
   });
 }

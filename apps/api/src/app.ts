@@ -13,7 +13,9 @@ import { createProjectsRouter } from './modules/projects/projects.routes';
 import type { ProjectsService } from './modules/projects/projects.service';
 import { createSprintsRouter } from './modules/sprints/sprints.routes';
 import type { SprintsService } from './modules/sprints/sprints.service';
-import { createBoardRouter, createTasksRouter } from './modules/tasks/tasks.routes';
+import { createSearchRouter } from './modules/search/search.routes';
+import type { SearchService } from './modules/search/search.service';
+import { createBoardRouter, createPlanningRouter, createTasksRouter } from './modules/tasks/tasks.routes';
 import type { TasksService } from './modules/tasks/tasks.service';
 
 /** Everything the HTTP layer needs. server.ts wires real Prisma services; tests wire in-memory ones. */
@@ -23,6 +25,7 @@ export type AppDeps = {
   projects: ProjectsService;
   sprints: SprintsService;
   tasks: TasksService;
+  search: SearchService;
   /** Resolves when the database answers; rejects otherwise. */
   checkDatabase: () => Promise<void>;
   corsOrigins: string[];
@@ -58,6 +61,8 @@ export function createApp(deps: AppDeps) {
   app.use('/api/projects/:key/sprints', createSprintsRouter(deps.sprints, guards));
   app.use('/api/projects/:key/tasks', createTasksRouter(deps.tasks, guards));
   app.use('/api/projects/:key/board', createBoardRouter(deps.tasks, guards));
+  app.use('/api/projects/:key/planning', createPlanningRouter(deps.tasks, guards));
+  app.use('/api/search', createSearchRouter(deps.search, guards));
   app.use('/api/projects', createProjectsRouter(deps.projects, guards));
   app.use('/api', createAccessRouter(deps.access, guards));
 

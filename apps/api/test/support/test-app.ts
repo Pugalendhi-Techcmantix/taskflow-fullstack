@@ -5,6 +5,7 @@ import type { EmailMessage, EmailSender } from '../../src/email/email-sender';
 import { createAccessService } from '../../src/modules/access/access.service';
 import { createAuthService } from '../../src/modules/auth/auth.service';
 import { createProjectsService } from '../../src/modules/projects/projects.service';
+import { createSearchService } from '../../src/modules/search/search.service';
 import { createSprintsService } from '../../src/modules/sprints/sprints.service';
 import { createTasksService } from '../../src/modules/tasks/tasks.service';
 import { createMemoryRepositories } from './memory-repositories';
@@ -51,6 +52,7 @@ export function createTestApp() {
     projects,
     sprints: createSprintsService({ repos: store.repos, projects, now: clock.now }),
     tasks: createTasksService({ repos: store.repos, projects, now: clock.now }),
+    search: createSearchService(store.repos),
     checkDatabase: async () => {},
     corsOrigins: ['http://localhost:5200'],
     secureCookies: false,

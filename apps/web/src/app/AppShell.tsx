@@ -3,10 +3,13 @@ import { NavLink, Outlet, useLocation } from 'react-router';
 import type { PublicUser } from '@taskflow/core';
 import { signOut, useSession } from '../features/auth/session';
 import { ProjectSwitcher } from '../features/projects/ProjectSwitcher';
-import { NewTaskButton } from '../features/tasks/NewTaskButton';
+import { GLOBAL_SEARCH_ID, GlobalSearch } from '../features/search/GlobalSearch';
+import { NewTaskButton, useNewTaskTarget } from '../features/tasks/NewTaskButton';
+import { NewTaskDialog } from '../features/tasks/NewTaskDialog';
 import { Avatar } from './Avatar';
 import { Icon } from './icons';
 import { NAV_ITEMS } from './nav';
+import { ShortcutsDialog, useGlobalShortcuts } from './shortcuts';
 import { toggleTheme } from './theme';
 import { Toaster } from './toast';
 
@@ -35,12 +38,25 @@ export function AppShell() {
   const session = useSession();
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
-  if (session.status !== 'authenticated') return null; // RequireAuth guarantees this; narrows the type
+  const [dialog, setDialog] = useState<{ kind: 'none' } | { kind: 'help' } | { kind: 'new-task'; projectKey: string }>({ kind: 'none' });
+  const newTaskTarget = useNewTaskTarget();
   const closeNav = () => setNavOpen(false);
+  const closeDialog = () => setDialog({ kind: 'none' });
+  const openHelp = () => setDialog({ kind: 'help' });
+  const newTask = () => {
+    if (newTaskTarget) setDialog({ kind: 'new-task', projectKey: newTaskTarget });
+  };
   const toggleCollapsed = () => {
     setCollapsed(!collapsed);
     saveCollapsed(!collapsed);
   };
+  useGlobalShortcuts({
+    onSearch: () => document.getElementById(GLOBAL_SEARCH_ID)?.focus(),
+    onHelp: openHelp,
+    onNewTask: newTask,
+    onToggleSidebar: toggleCollapsed,
+  });
+  if (session.status !== 'authenticated') return null; // RequireAuth guarantees this; narrows the type
 
   return (
     <div className={`shell ${collapsed ? 'collapsed' : ''}`}>
@@ -65,15 +81,21 @@ export function AppShell() {
           <button className="icon-btn mobile-only" onClick={() => setNavOpen((o) => !o)} aria-label="Open menu" aria-expanded={navOpen}>
             <Icon name="menu" />
           </button>
+          <GlobalSearch />
           <div className="top-actions">
-            <NewTaskButton />
-            <UserMenu user={session.user} />
+            {newTaskTarget && <NewTaskButton target={newTaskTarget} onClick={newTask} />}
+            <button className="icon-btn hide-sm" onClick={openHelp} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">
+              <Icon name="kbd" size={20} />
+            </button>
+            <UserMenu user={session.user} onShortcuts={openHelp} />
           </div>
         </header>
         <main id="main" tabIndex={-1}>
           <Outlet />
         </main>
       </div>
+      {dialog.kind === 'help' && <ShortcutsDialog onClose={closeDialog} />}
+      {dialog.kind === 'new-task' && <NewTaskDialog projectKey={dialog.projectKey} onClose={closeDialog} />}
       <Toaster />
     </div>
   );
@@ -107,7 +129,7 @@ function SideLink({ item, onNavigate }: { item: (typeof NAV_ITEMS)[number]; onNa
 }
 
 /** Native popover: Escape and click-outside close it with no extra JavaScript. */
-function UserMenu({ user }: { user: PublicUser }) {
+function UserMenu({ user, onShortcuts }: { user: PublicUser; onShortcuts: () => void }) {
   return (
     <>
       <button className="avatar-btn" popoverTarget="user-menu" aria-label={`Account menu for ${user.name}`}>
@@ -123,6 +145,9 @@ function UserMenu({ user }: { user: PublicUser }) {
           </div>
         </div>
         <button className="menu-item" onClick={toggleTheme}><Icon name="moon" size={16} /> Toggle dark mode</button>
+        <button className="menu-item" popoverTarget="user-menu" popoverTargetAction="hide" onClick={onShortcuts}>
+          <Icon name="kbd" size={16} /> Keyboard shortcuts <kbd className="menu-kbd">?</kbd>
+        </button>
         <button className="menu-item danger" onClick={() => void signOut()}><Icon name="logout" size={16} /> Sign out</button>
       </div>
     </>

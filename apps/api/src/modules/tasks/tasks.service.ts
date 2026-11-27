@@ -2,12 +2,15 @@ import {
   ERROR_CODES,
   MIN_POSITION_GAP,
   findMentions,
+  pageCount,
   positionBetween,
   taskKey,
   type Board,
   type CreateTaskInput,
   type MoveTaskInput,
   type TaskDetail,
+  type TaskListQuery,
+  type TaskPage,
   type TaskStatus,
   type TaskSummary,
   type UpdateSubtaskInput,
@@ -19,7 +22,7 @@ import { isAdmin, type Actor } from '../access/actor';
 import type { ProjectRecord } from '../projects/projects.repository';
 import type { ProjectsService } from '../projects/projects.service';
 import { toSprint } from '../sprints/sprints.service';
-import type { Column, TaskChanges, TaskDetailRecord, TaskRecord } from './tasks.repository';
+import type { Column, TaskChanges, TaskDetailRecord, TaskFilter, TaskRecord } from './tasks.repository';
 
 export const toTaskSummary = (t: TaskRecord): TaskSummary => ({
   id: t.id,
@@ -90,7 +93,19 @@ export function createTasksService(deps: {
   /** Position at the bottom of a column (new tasks, and tasks that change column outside the board). */
   const endOf = async (column: Column) => positionBetween(await tasks.lastPosition(column), null);
 
-  async function list(actor: Actor, projectKey: string): Promise<TaskSummary[]> {
+  /** One page of the Tasks table. A page past the end gives the last page, so a stale link still shows rows. */
+  async function list(actor: Actor, projectKey: string, query: TaskListQuery): Promise<TaskPage> {
+    const project = await deps.projects.visibleProject(actor, projectKey);
+    const { q, status, priority, type, assignee, sprint, sort, dir, size } = query;
+    const filter: TaskFilter = { projectId: project.id, q, status, priority, type, assignee, sprint };
+    const total = await tasks.countMatching(filter);
+    const page = Math.min(query.page, pageCount(total, size));
+    const rows = total === 0 ? [] : await tasks.listPage(filter, { sort, dir }, { offset: (page - 1) * size, limit: size });
+    return { tasks: rows.map(toTaskSummary), total, page, size };
+  }
+
+  /** Every task of the project, for sprint planning (sprint lists and the backlog). Oldest first. */
+  async function planning(actor: Actor, projectKey: string): Promise<TaskSummary[]> {
     const project = await deps.projects.visibleProject(actor, projectKey);
     return (await tasks.listByProject(project.id)).map(toTaskSummary);
   }
@@ -251,5 +266,5 @@ export function createTasksService(deps: {
     return toTaskDetail(await taskIn(project, number));
   }
 
-  return { list, get, create, update, remove, board, move, addSubtask, updateSubtask, deleteSubtask, addComment, deleteComment };
+  return { list, planning, get, create, update, remove, board, move, addSubtask, updateSubtask, deleteSubtask, addComment, deleteComment };
 }

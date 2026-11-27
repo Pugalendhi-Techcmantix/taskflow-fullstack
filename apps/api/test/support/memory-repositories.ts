@@ -1,5 +1,17 @@
 import { randomUUID } from 'node:crypto';
-import { DEFAULT_ROLE_PERMISSIONS, PERMISSION_KEYS, POSITION_STEP, ROLE_IDS, ROLE_NAMES, byPosition, type PermissionKey, type RoleId } from '@taskflow/core';
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  PERMISSION_KEYS,
+  POSITION_STEP,
+  ROLE_IDS,
+  ROLE_NAMES,
+  TASK_PRIORITIES,
+  TASK_STATUSES,
+  byPosition,
+  type PermissionKey,
+  type RoleId,
+  type TaskSort,
+} from '@taskflow/core';
 import type { InviteRecord, InviteRepository, RoleRepository } from '../../src/modules/access/access.repository';
 import {
   EmailTakenError,
@@ -10,7 +22,17 @@ import {
 } from '../../src/modules/auth/auth.repository';
 import { ProjectKeyTakenError, type ProjectRecord, type ProjectRepository } from '../../src/modules/projects/projects.repository';
 import type { SprintRecord, SprintRepository } from '../../src/modules/sprints/sprints.repository';
-import type { Column, CommentRecord, SubtaskRecord, TaskDetailRecord, TaskRecord, TaskRepository } from '../../src/modules/tasks/tasks.repository';
+import type { SearchRepository, SearchScope } from '../../src/modules/search/search.repository';
+import type {
+  Column,
+  CommentRecord,
+  SubtaskRecord,
+  TaskDetailRecord,
+  TaskFilter,
+  TaskOrder,
+  TaskRecord,
+  TaskRepository,
+} from '../../src/modules/tasks/tasks.repository';
 import type { Repositories } from '../../src/repositories';
 
 /**
@@ -283,9 +305,47 @@ export function createMemoryRepositories(now: () => Date) {
 
   const inColumn = (t: StoredTask, c: Column) => t.projectId === c.projectId && t.sprintId === c.sprintId && t.status === c.status;
 
+  /* Same rules as the SQL in prisma-tasks.repository.ts: text matches key or title, ignoring case. */
+  const keyOf = (t: StoredTask) => `${projects.find((p) => p.id === t.projectId)?.key ?? '?'}-${t.number}`;
+  const textMatches = (t: StoredTask, text: string) => {
+    const q = text.toLowerCase();
+    return t.title.toLowerCase().includes(q) || keyOf(t).toLowerCase().includes(q);
+  };
+  const matchesFilter = (f: TaskFilter) => (t: StoredTask) =>
+    t.projectId === f.projectId
+    && (!f.q || textMatches(t, f.q))
+    && (!f.status || t.status === f.status)
+    && (!f.priority || t.priority === f.priority)
+    && (!f.type || t.type === f.type)
+    && (!f.assignee || (f.assignee === 'none' ? t.assigneeId === null : t.assigneeId === f.assignee))
+    && (!f.sprint || (f.sprint === 'backlog' ? t.sprintId === null : t.sprintId === f.sprint));
+  const sortValue: Record<TaskSort, (t: StoredTask) => string | number | null> = {
+    key: (t) => t.number,
+    title: (t) => t.title.toLowerCase(),
+    status: (t) => TASK_STATUSES.indexOf(t.status),
+    priority: (t) => TASK_PRIORITIES.indexOf(t.priority),
+    assignee: (t) => personRef(t.assigneeId)?.name.toLowerCase() ?? null,
+    sprint: (t) => sprints.find((s) => s.id === t.sprintId)?.startDate ?? null,
+    points: (t) => t.points,
+    due: (t) => t.dueDate,
+  };
+  /** Empty values last in both directions, then by number. */
+  const byOrder = ({ sort, dir }: TaskOrder) => (a: StoredTask, b: StoredTask) => {
+    const [x, y] = [sortValue[sort](a), sortValue[sort](b)];
+    if (x !== y) {
+      if (x === null) return 1;
+      if (y === null) return -1;
+      return (x < y ? -1 : 1) * (dir === 'desc' ? -1 : 1);
+    }
+    return a.number - b.number;
+  };
+
   const taskRepo: TaskRepository = {
     listByProject: async (projectId) =>
       tasks.filter((t) => t.projectId === projectId).toSorted((a, b) => a.number - b.number).map(toTaskRecord),
+    countMatching: async (filter) => tasks.filter(matchesFilter(filter)).length,
+    listPage: async (filter, order, { offset, limit }) =>
+      tasks.filter(matchesFilter(filter)).toSorted(byOrder(order)).slice(offset, offset + limit).map(toTaskRecord),
     findByNumber: async (projectId, number) => {
       const t = tasks.find((x) => x.projectId === projectId && x.number === number);
       return t ? toTaskDetail(t) : null;
@@ -376,6 +436,30 @@ export function createMemoryRepositories(now: () => Date) {
     for (let i = tasks.length - 1; i >= 0; i--) if (tasks[i]?.projectId === id) tasks.splice(i, 1);
   };
 
+  /* ---------- global search ---------- */
+
+  const inScope = ({ userId, all }: SearchScope) => (projectId: string) =>
+    all || (projects.find((p) => p.id === projectId)?.members.some((m) => m.userId === userId) ?? false);
+
+  const searchRepo: SearchRepository = {
+    async tasks(text, scope, limit) {
+      const exact = (t: StoredTask) => (keyOf(t).toLowerCase() === text.toLowerCase() ? 0 : 1);
+      return tasks
+        .filter((t) => inScope(scope)(t.projectId) && textMatches(t, text))
+        .toSorted((a, b) => exact(a) - exact(b) || b.updatedAt.getTime() - a.updatedAt.getTime() || a.number - b.number)
+        .slice(0, limit)
+        .map(toTaskRecord);
+    },
+    async projects(text, scope, limit) {
+      const q = text.toLowerCase();
+      return projects
+        .filter((p) => inScope(scope)(p.id) && (p.name.toLowerCase().includes(q) || p.key.toLowerCase().includes(q)))
+        .toSorted((a, b) => a.name.localeCompare(b.name))
+        .slice(0, limit)
+        .map(({ id, key, name, color }) => ({ id, key, name, color }));
+    },
+  };
+
   const repos: Repositories = {
     users: userRepo,
     refreshTokens: tokenRepo,
@@ -384,6 +468,7 @@ export function createMemoryRepositories(now: () => Date) {
     projects: projectRepo,
     sprints: sprintRepo,
     tasks: taskRepo,
+    search: searchRepo,
   };
   return { repos, users, tokens, grants, invites, projects, sprints, tasks };
 }

@@ -14,7 +14,7 @@ import { projectKeys } from '../projects/projects-api';
 import { useCurrentProject } from '../projects/ProjectPage';
 import { StatusBadge, TypeIcon, PriorityBadge } from '../tasks/badges';
 import { TaskDialog } from '../tasks/TaskDialog';
-import { fetchTasks, taskKeys, updateTask } from '../tasks/tasks-api';
+import { fetchPlanning, patchTaskLists, taskKeys, updateTask } from '../tasks/tasks-api';
 import { useTaskParam } from '../tasks/useTaskParam';
 import { CompleteSprintDialog, destinationName, useCompleteSprint } from './CompleteSprintDialog';
 import { sprintTiming } from './sprint-timing';
@@ -36,9 +36,9 @@ export function SprintsPage() {
   const can = useCan();
   const qc = useQueryClient();
   const listKey = sprintKeys.list(project.key);
-  const tasksKey = taskKeys.list(project.key);
+  const tasksKey = taskKeys.planning(project.key);
   const sprints = useQuery({ queryKey: listKey, queryFn: ({ signal }) => fetchSprints(project.key, signal) });
-  const tasks = useQuery({ queryKey: tasksKey, queryFn: ({ signal }) => fetchTasks(project.key, signal) });
+  const tasks = useQuery({ queryKey: tasksKey, queryFn: ({ signal }) => fetchPlanning(project.key, signal) });
   const [dialog, setDialog] = useState<Dialog>({ kind: 'none' });
   const close = () => setDialog({ kind: 'none' });
   const { openNumber, open, close: closeTask } = useTaskParam(project.key);
@@ -46,7 +46,7 @@ export function SprintsPage() {
   const today = todayIso();
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: listKey });
-    void qc.invalidateQueries({ queryKey: tasksKey });
+    void qc.invalidateQueries({ queryKey: taskKeys.list(project.key) }); // planning list, table pages and board
     void qc.invalidateQueries({ queryKey: projectKeys.all });
   };
   const onError = (err: unknown) => {
@@ -88,15 +88,13 @@ export function SprintsPage() {
   const moveTask = useMutation({
     mutationFn: ({ task, sprintId }: { task: TaskSummary; sprintId: string }) => updateTask(project.key, task.number, { sprintId }),
     onMutate: async ({ task, sprintId }) => {
-      await qc.cancelQueries({ queryKey: tasksKey });
-      const previous = qc.getQueryData<{ tasks: TaskSummary[] }>(tasksKey);
+      await qc.cancelQueries({ queryKey: taskKeys.list(project.key) });
       const target = sprints.data?.sprints.find((s) => s.id === sprintId);
-      qc.setQueryData<{ tasks: TaskSummary[] }>(tasksKey, (old) =>
-        old && { tasks: old.tasks.map((t) => (t.id === task.id ? { ...t, sprint: target ? { id: target.id, name: target.name } : null } : t)) });
-      return { previous };
+      const rollback = patchTaskLists(qc, project.key, (t) => (t.id === task.id ? { ...t, sprint: target ? { id: target.id, name: target.name } : null } : t));
+      return { rollback };
     },
     onError: (err, _v, ctx) => {
-      if (ctx?.previous) qc.setQueryData(tasksKey, ctx.previous);
+      ctx?.rollback();
       onError(err);
     },
     onSuccess: ({ task }) => toast(`${task.key} added to ${task.sprint?.name ?? 'the sprint'}`),
@@ -172,7 +170,7 @@ export function SprintsPage() {
                 <TaskRows tasks={ts.slice(0, SHOWN_PER_SPRINT)} onOpen={(t) => open(t.key)} />
               )}
               {s.status !== 'completed' && ts.length > SHOWN_PER_SPRINT && (
-                <p className="muted small more-line">+ {ts.length - SHOWN_PER_SPRINT} more · <Link to={`/projects/${project.key}/tasks`}>see all</Link></p>
+                <p className="muted small more-line">+ {ts.length - SHOWN_PER_SPRINT} more · <Link to={`/projects/${project.key}/tasks?sprint=${s.id}`}>see all</Link></p>
               )}
             </li>
           );

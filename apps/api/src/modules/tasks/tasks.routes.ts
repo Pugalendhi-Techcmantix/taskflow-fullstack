@@ -1,5 +1,14 @@
 import { Router } from 'express';
-import { createCommentInput, createSubtaskInput, createTaskInput, moveTaskInput, projectKeySchema, updateSubtaskInput, updateTaskInput } from '@taskflow/core';
+import {
+  createCommentInput,
+  createSubtaskInput,
+  createTaskInput,
+  moveTaskInput,
+  projectKeySchema,
+  taskListQuery,
+  updateSubtaskInput,
+  updateTaskInput,
+} from '@taskflow/core';
 import { z } from 'zod';
 import { parse } from '../../http/errors';
 import type { Guards } from '../access/actor';
@@ -15,9 +24,11 @@ export function createTasksRouter(tasks: TasksService, { signedIn, requirePermis
   const router = Router({ mergeParams: true });
   router.use(signedIn);
 
+  /** The Tasks table: filtered, sorted and paged here, so only one page ever leaves the database. */
   router.get('/', async (req, res) => {
     const { key } = parse(keyParam, req.params);
-    res.json({ tasks: await tasks.list(await actorOf(req), key) });
+    const query = parse(taskListQuery, req.query);
+    res.json(await tasks.list(await actorOf(req), key, query));
   });
 
   router.post('/', requirePermission('task:create'), async (req, res) => {
@@ -83,6 +94,17 @@ export function createTasksRouter(tasks: TasksService, { signedIn, requirePermis
     res.json({ task: await tasks.deleteComment(await actorOf(req), key, number, commentId) });
   });
 
+  return router;
+}
+
+/** /api/projects/:key/planning — every task of the project, for the Sprints page. Reading follows project visibility. */
+export function createPlanningRouter(tasks: TasksService, { signedIn, actorOf }: Guards): Router {
+  const router = Router({ mergeParams: true });
+  router.use(signedIn);
+  router.get('/', async (req, res) => {
+    const { key } = parse(keyParam, req.params);
+    res.json({ tasks: await tasks.planning(await actorOf(req), key) });
+  });
   return router;
 }
 

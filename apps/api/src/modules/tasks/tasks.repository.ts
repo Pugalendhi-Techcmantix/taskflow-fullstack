@@ -1,4 +1,4 @@
-import type { TaskPriority, TaskStatus, TaskType } from '@taskflow/core';
+import type { SortDir, TaskListQuery, TaskPriority, TaskSort, TaskStatus, TaskType } from '@taskflow/core';
 
 export type PersonRef = { id: string; name: string };
 
@@ -65,9 +65,25 @@ export type TaskChanges = Partial<{
   position: number;
 }>;
 
+/**
+ * Which tasks of a project a list shows. `q` matches the title or the key ("TF-10" finds TF-101…109),
+ * ignoring case. A missing field means "all".
+ */
+export type TaskFilter = { projectId: string } & Pick<TaskListQuery, 'q' | 'status' | 'priority' | 'type' | 'assignee' | 'sprint'>;
+
+/**
+ * Status sorts in workflow order (To Do → Done), priority from Critical to Low, sprint by start date.
+ * Empty values (no assignee, no points…) always come last. Ties are broken by task number.
+ */
+export type TaskOrder = { sort: TaskSort; dir: SortDir };
+
 export interface TaskRepository {
   /** Oldest first (by number). */
   listByProject(projectId: string): Promise<TaskRecord[]>;
+  /** How many tasks match the filter. */
+  countMatching(filter: TaskFilter): Promise<number>;
+  /** One page of matching tasks, in `order`. */
+  listPage(filter: TaskFilter, order: TaskOrder, page: { offset: number; limit: number }): Promise<TaskRecord[]>;
   findByNumber(projectId: string, number: number): Promise<TaskDetailRecord | null>;
   findById(id: string): Promise<TaskRecord | null>;
   /** One sprint's tasks in board order (position, then number). */

@@ -197,6 +197,71 @@ export const taskSummaryResponse = z.object({ task: taskSummary });
 export const boardResponse = z.object({ sprint: sprint.nullable(), tasks: z.array(taskSummary) });
 export type Board = z.infer<typeof boardResponse>;
 
+/* ---------- task list: filtered, sorted and paged on the server ---------- */
+
+export const TASK_SORTS = ['key', 'title', 'status', 'priority', 'assignee', 'sprint', 'points', 'due'] as const;
+export type TaskSort = (typeof TASK_SORTS)[number];
+export const SORT_DIRS = ['asc', 'desc'] as const;
+export type SortDir = (typeof SORT_DIRS)[number];
+
+export const PAGE_SIZES = [10, 25, 50, 100] as const;
+export type PageSize = (typeof PAGE_SIZES)[number];
+export const DEFAULT_PAGE_SIZE = 25 satisfies PageSize;
+export const SEARCH_TEXT_MAX = 100;
+
+/** Free-text search: trimmed, at most 100 characters. */
+export const searchTextSchema = z.string().trim().max(SEARCH_TEXT_MAX, `Use at most ${SEARCH_TEXT_MAX} characters`);
+/** A member id, or "none" for unassigned tasks. */
+export const assigneeFilterSchema = z.union([z.literal('none'), z.uuid()], { error: 'Pick a member or "none"' });
+/** A sprint id, or "backlog" for tasks in no sprint. */
+export const sprintFilterSchema = z.union([z.literal('backlog'), z.uuid()], { error: 'Pick a sprint or "backlog"' });
+
+/**
+ * The query string of GET /api/projects/:key/tasks. Every value arrives as text, so numbers are coerced.
+ * A missing filter means "all". Anything invalid is a 400, never silently ignored.
+ */
+export const taskListQuery = z.object({
+  q: searchTextSchema.default(''),
+  status: taskStatusSchema.optional(),
+  priority: taskPrioritySchema.optional(),
+  type: taskTypeSchema.optional(),
+  assignee: assigneeFilterSchema.optional(),
+  sprint: sprintFilterSchema.optional(),
+  sort: z.enum(TASK_SORTS, { error: 'Unknown sort column' }).default('key'),
+  dir: z.enum(SORT_DIRS, { error: 'Use asc or desc' }).default('asc'),
+  page: z.coerce.number({ error: 'Page must be a number' }).int('Page must be a whole number').min(1, 'Pages start at 1').max(100_000, 'Page is too large').default(1),
+  size: z.coerce.number({ error: 'Rows per page must be a number' })
+    .pipe(z.literal(PAGE_SIZES, { error: `Use ${PAGE_SIZES.join(', ')} rows per page` }))
+    .default(DEFAULT_PAGE_SIZE),
+});
+export type TaskListQuery = z.output<typeof taskListQuery>;
+
+/** One page of tasks. `page` is the page actually returned (a page past the end gives the last page). */
+export const taskPageResponse = z.object({
+  tasks: z.array(taskSummary),
+  total: z.number().int(),
+  page: z.number().int(),
+  size: z.number().int(),
+});
+export type TaskPage = z.infer<typeof taskPageResponse>;
+
+/** Number of pages for `total` rows (at least 1, so an empty list still has page 1). */
+export const pageCount = (total: number, size: number) => Math.max(1, Math.ceil(total / size));
+
+/**
+ * Page buttons for a pager: every page when there are 7 or fewer, otherwise the first, the last and
+ * the pages next to `current`, with 'gap' where pages are left out. pageItems(6, 20) → 1 … 5 6 7 … 20.
+ */
+export function pageItems(current: number, count: number): (number | 'gap')[] {
+  if (count <= 7) return Array.from({ length: count }, (_, i) => i + 1);
+  const near = current <= 4 ? [2, 3, 4, 5] : current >= count - 3 ? [count - 4, count - 3, count - 2, count - 1] : [current - 1, current, current + 1];
+  const pages = [1, ...near, count];
+  return pages.flatMap((p, i) => {
+    const prev = pages[i - 1];
+    return prev !== undefined && p - prev > 1 ? ['gap' as const, p] : [p];
+  });
+}
+
 /** A task is "overdue" when its due date has passed and it is not done. */
 export const isOverdue = (t: Pick<TaskSummary, 'dueDate' | 'status'>, today: string) =>
   t.dueDate !== null && t.status !== 'done' && t.dueDate < today;

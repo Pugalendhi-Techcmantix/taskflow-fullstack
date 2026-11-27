@@ -5,6 +5,7 @@ import { env, isProduction } from './env';
 import { createAccessService } from './modules/access/access.service';
 import { createAuthService } from './modules/auth/auth.service';
 import { createProjectsService } from './modules/projects/projects.service';
+import { createSearchService } from './modules/search/search.service';
 import { createSprintsService } from './modules/sprints/sprints.service';
 import { createTasksService } from './modules/tasks/tasks.service';
 import { createPrismaRepositories } from './prisma-repositories';
@@ -41,6 +42,7 @@ const access = createAccessService({
 const projects = createProjectsService(repos);
 const sprints = createSprintsService({ repos, projects });
 const tasks = createTasksService({ repos, projects });
+const search = createSearchService(repos);
 
 const app = createApp({
   auth,
@@ -48,6 +50,7 @@ const app = createApp({
   projects,
   sprints,
   tasks,
+  search,
   checkDatabase: async () => {
     await prisma.$queryRaw`SELECT 1`;
   },

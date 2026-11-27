@@ -11,9 +11,10 @@ import {
   taskTypeSchema,
   type TaskSummary,
 } from '@taskflow/core';
+import { copyLink } from '../../app/copyLink';
 import { LoadError, SkeletonRows } from '../../app/feedback';
 import { Icon } from '../../app/icons';
-import { toast } from '../../app/toast';
+import { UrlTextInput } from '../../app/UrlTextInput';
 import { formatRange, todayIso } from '../../lib/dates';
 import { useUrlState } from '../../lib/useUrlState';
 import { useCan, useSession } from '../auth/session';
@@ -43,15 +44,6 @@ const matches = (f: BoardFilters) => (t: TaskSummary) => {
     && (!f.priority || t.priority === f.priority)
     && (!f.type || t.type === f.type);
 };
-
-async function copyLink() {
-  try {
-    await navigator.clipboard.writeText(window.location.href);
-    toast('Link copied · it opens this board with the same filters');
-  } catch {
-    toast("Couldn't copy the link. Copy it from the address bar instead.", 'error');
-  }
-}
 
 /** /projects/:key/board — the active sprint as a Kanban board. */
 export function BoardPage() {
@@ -110,8 +102,8 @@ export function BoardPage() {
       </div>
 
       <div className="filters" role="search" aria-label="Filter cards">
-        <input className="input search" type="search" placeholder="Filter cards…" aria-label="Filter cards by title or key"
-          value={filters.q} maxLength={100} onChange={(e) => setFilters({ q: e.target.value })} />
+        <UrlTextInput className="input search" type="search" placeholder="Filter cards…" aria-label="Filter cards by title or key"
+          value={filters.q} maxLength={100} onValueChange={(q) => setFilters({ q })} />
         <select className="input" aria-label="Assignee" value={filters.assignee} onChange={(e) => setFilters({ assignee: e.target.value })}>
           <option value="">All assignees</option>
           <option value="none">Unassigned</option>
@@ -128,7 +120,7 @@ export function BoardPage() {
           {TASK_TYPES.map((t) => <option key={t} value={t}>{TASK_TYPE_LABELS[t]}</option>)}
         </select>
         {!isDefault && <button className="btn sm" onClick={reset}>Clear filters</button>}
-        <button className="btn sm" onClick={() => void copyLink()} title="Filters are saved in the URL. Share this link to show the same view.">
+        <button className="btn sm" onClick={() => void copyLink('this board')} title="Filters are saved in the URL. Share this link to show the same view.">
           <Icon name="link" size={14} /> Copy link
         </button>
       </div>

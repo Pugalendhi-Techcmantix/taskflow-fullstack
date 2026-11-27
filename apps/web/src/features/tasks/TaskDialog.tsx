@@ -29,7 +29,7 @@ import { projectKeys } from '../projects/projects-api';
 import { fetchSprints, sprintKeys } from '../sprints/sprints-api';
 import { TypeIcon } from './badges';
 import { Comments, Subtasks } from './TaskItems';
-import { deleteTask, fetchTask, taskKeys, updateTask } from './tasks-api';
+import { deleteTask, fetchTask, patchTaskLists, taskKeys, updateTask } from './tasks-api';
 
 type Props = { project: Project; number: number; onClose: () => void };
 
@@ -50,7 +50,6 @@ export function TaskDialog({ project, number, onClose }: Props) {
     onMutate: async (input) => {
       await Promise.all([qc.cancelQueries({ queryKey: detailKey }), qc.cancelQueries({ queryKey: listKey })]);
       const prevDetail = qc.getQueryData<{ task: TaskDetail }>(detailKey);
-      const prevList = qc.getQueryData<{ tasks: TaskSummary[] }>(listKey);
       const members = project.members;
       const sprintList = sprints.data?.sprints ?? [];
       const patch = <T extends TaskSummary>(t: T): T => ({
@@ -69,12 +68,12 @@ export function TaskDialog({ project, number, onClose }: Props) {
           : {}),
       });
       qc.setQueryData<{ task: TaskDetail }>(detailKey, (old) => old && { task: { ...patch(old.task), ...(input.description !== undefined ? { description: input.description } : {}) } });
-      qc.setQueryData<{ tasks: TaskSummary[] }>(listKey, (old) => old && { tasks: old.tasks.map((t) => (t.number === number ? patch(t) : t)) });
-      return { prevDetail, prevList };
+      const rollbackLists = patchTaskLists(qc, project.key, (t) => (t.number === number ? patch(t) : t));
+      return { prevDetail, rollbackLists };
     },
     onError: (err, _input, ctx) => {
       if (ctx?.prevDetail) qc.setQueryData(detailKey, ctx.prevDetail);
-      if (ctx?.prevList) qc.setQueryData(listKey, ctx.prevList);
+      ctx?.rollbackLists();
       toast(`Not saved: ${errorMessage(err)}`, 'error');
       if (err instanceof ApiError && err.status === 403) void reloadSessionUser();
     },
