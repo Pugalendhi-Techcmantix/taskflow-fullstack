@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
-export type Toast = { id: number; kind: 'success' | 'error'; message: string };
+/** live: someone else's change arriving in real time (green dot, as in the prototype). */
+export type Toast = { id: number; kind: 'success' | 'error' | 'live'; message: string };
 
 let toasts: Toast[] = [];
 let nextId = 1;

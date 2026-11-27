@@ -572,3 +572,41 @@ a.stat:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 @media (max-width: 1100px) { .stats { grid-template-columns: repeat(2, 1fr); } .dash-grid, .dash-grid.even { grid-template-columns: 1fr; } }
 @media (max-width: 420px) { .stats { gap: 10px; } .stat .value { font-size: 24px; } }
+
+/* Module 9: notifications bell, live toasts, connection status (prototype) */
+.toast.live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, .3); flex: none; }
+.icon-btn.bell { position: relative; }
+.nbadge { position: absolute; top: 4px; right: 4px; min-width: 17px; height: 17px; border-radius: 9px; background: var(--red); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; border: 2px solid var(--surface); line-height: 1; }
+.nbadge.pulse { animation: badge-pulse .8s ease 2; }
+@keyframes badge-pulse { 50% { transform: scale(1.35); } }
+/* Right edge lines up with the bell (prototype); the user-menu avatar to its right is fixed width. */
+.dropdown.notif-dd { width: 380px; padding: 0; overflow: hidden; right: 68px; }
+.notif .avatar { width: 30px; height: 30px; font-size: 11px; }
+.notif-dd .dd-head { justify-content: space-between; margin-bottom: 0; padding: 12px 14px; }
+.notif-dd .dd-head .link-btn { color: var(--accent); font-size: 12px; font-weight: 600; text-decoration: none; margin-left: 0; }
+.notif-dd .dd-head .link-btn:hover { color: var(--accent-hover); text-decoration: underline; }
+.notif-dd .dd-body { max-height: 380px; overflow: auto; }
+.notif-list { list-style: none; margin: 0; padding: 0; }
+.notif { display: flex; gap: 10px; padding: 11px 14px; width: 100%; text-align: left; border-bottom: 1px solid var(--border); color: var(--text); align-items: flex-start; }
+.notif-list li:last-child .notif { border-bottom: none; }
+.notif:hover { background: var(--surface-2); }
+.notif.unread { background: var(--accent-soft); }
+.notif.unread:hover { filter: brightness(.98); }
+.notif:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.notif-body { display: grid; gap: 2px; min-width: 0; }
+.notif .t { font-size: 13px; }
+.notif .time { font-size: 11px; color: var(--faint); }
+.notif-pad { padding: 14px; }
+.notif-empty { padding: 32px 14px; }
+.notif-more { display: flex; justify-content: center; padding: 10px; border-top: 1px solid var(--border); }
+.live-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--amber); background: var(--amber-soft); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+.live-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: badge-pulse 1.2s ease infinite; }
+[data-theme="dark"] .toast { background: #2a2f3b; border: 1px solid #3d4352; }
+@media (max-width: 860px) { .dropdown.notif-dd { right: 56px; } }
+/* Phones: the pill shrinks to its dot; the text stays for screen readers and as a tooltip. */
+@media (max-width: 420px) {
+  .dropdown.notif-dd { width: auto; right: 8px; }
+  .live-status { padding: 6px; }
+  .live-status .live-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+@media (prefers-reduced-motion: reduce) { .nbadge.pulse, .live-status::before { animation: none; } }

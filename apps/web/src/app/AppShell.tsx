@@ -3,12 +3,15 @@ import { NavLink, Outlet, useLocation } from 'react-router';
 import type { PublicUser } from '@taskflow/core';
 import { signOut, useSession } from '../features/auth/session';
 import { ProjectSwitcher } from '../features/projects/ProjectSwitcher';
+import { NotificationBell } from '../features/notifications/NotificationBell';
+import { useLiveUpdates } from '../features/notifications/useLiveUpdates';
 import { GLOBAL_SEARCH_ID, GlobalSearch } from '../features/search/GlobalSearch';
 import { NewTaskButton, useNewTaskTarget } from '../features/tasks/NewTaskButton';
 import { NewTaskDialog } from '../features/tasks/NewTaskDialog';
 import { Avatar } from './Avatar';
 import { Icon } from './icons';
 import { NAV_ITEMS } from './nav';
+import { useRealtimeStatus } from '../lib/realtime';
 import { ShortcutsDialog, useGlobalShortcuts } from './shortcuts';
 import { toggleTheme } from './theme';
 import { Toaster } from './toast';
@@ -56,6 +59,8 @@ export function AppShell() {
     onNewTask: newTask,
     onToggleSidebar: toggleCollapsed,
   });
+  useLiveUpdates();
+  const live = useRealtimeStatus();
   if (session.status !== 'authenticated') return null; // RequireAuth guarantees this; narrows the type
 
   return (
@@ -83,10 +88,16 @@ export function AppShell() {
           </button>
           <GlobalSearch />
           <div className="top-actions">
+            {live === 'reconnecting' && (
+              <span className="live-status" role="status" title="Reconnecting…">
+                <span className="live-text">Reconnecting…</span>
+              </span>
+            )}
             {newTaskTarget && <NewTaskButton target={newTaskTarget} onClick={newTask} />}
             <button className="icon-btn hide-sm" onClick={openHelp} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">
               <Icon name="kbd" size={20} />
             </button>
+            <NotificationBell />
             <UserMenu user={session.user} onShortcuts={openHelp} />
           </div>
         </header>

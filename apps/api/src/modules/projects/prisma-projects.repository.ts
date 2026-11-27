@@ -51,6 +51,10 @@ export function createPrismaProjectRepository(prisma: PrismaClient): ProjectRepo
       const row = await prisma.project.findUnique({ where: { key }, include: withMembers });
       return row ? toProjectRecord(row) : null;
     },
+    async findById(id) {
+      const row = await prisma.project.findUnique({ where: { id }, include: withMembers });
+      return row ? toProjectRecord(row) : null;
+    },
     async keyExists(key) {
       return (await prisma.project.count({ where: { key } })) > 0;
     },

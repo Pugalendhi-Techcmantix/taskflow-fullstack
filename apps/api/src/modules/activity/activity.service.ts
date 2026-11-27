@@ -25,17 +25,36 @@ export type ActivityInput = {
   projectId?: string | null;
   taskId?: string | null;
   event: ActivityEvent;
+  /** Ids listeners need that the stored history doesn't keep (who to notify, which sprint). */
+  refs?: { sprintId?: string; memberId?: string; mentionedUserIds?: readonly string[] };
 };
 
-/** Services call `record` after a change has succeeded. */
-export type ActivityRecorder = { record: (input: ActivityInput) => Promise<void> };
+/** Reacts to every recorded change (notifications, live updates). `at` is the time the history entry got. */
+export type ActivityListener = (input: ActivityInput, at: Date) => Promise<void> | void;
+
+/** Services call `record` after a change has succeeded; listeners `subscribe` to hear about it. */
+export type ActivityRecorder = {
+  record: (input: ActivityInput) => Promise<void>;
+  subscribe: (listener: ActivityListener) => void;
+};
 
 /**
- * Writes activity entries. A failed write is logged and swallowed: the change itself has already been
- * saved, and telling the user it failed would be wrong.
+ * The event bus: writes each change to the history, then tells every listener.
+ * A failed write or listener is logged and swallowed: the change itself is already saved,
+ * and telling the user it failed would be wrong.
  */
 export function createActivityRecorder(repos: Pick<Repositories, 'activity'>, now: () => Date = () => new Date()): ActivityRecorder {
   const { activity } = repos;
+  const listeners: ActivityListener[] = [];
+  async function publish(input: ActivityInput, at: Date) {
+    for (const listener of listeners) {
+      try {
+        await listener(input, at);
+      } catch (err) {
+        console.error(`Activity listener failed (${input.event.action}):`, err);
+      }
+    }
+  }
   /**
    * Each entry gets a strictly later time than the one before (at most 1 ms later), so entries written
    * in the same millisecond (several fields saved at once) keep the order they happened in.
@@ -45,22 +64,31 @@ export function createActivityRecorder(repos: Pick<Repositories, 'activity'>, no
     lastMs = Math.max(now().getTime(), lastMs + 1);
     return new Date(lastMs);
   };
-  return {
-    async record({ actorId, projectId = null, taskId = null, event }) {
-      try {
-        const at = nextTime();
-        // Description autosave: repeated edits by the same person within a few minutes are one entry.
-        if (event.action === 'task.description_updated' && actorId && taskId) {
-          const recent = await activity.findRecent({ actorId, taskId, action: event.action, since: new Date(at.getTime() - DESCRIPTION_MERGE_MS) });
-          if (recent) {
-            await activity.touch(recent, at);
-            return;
-          }
-        }
-        await activity.add({ actorId, type: activityTypeOf(event.action), projectId, taskId, event, createdAt: at });
-      } catch (err) {
-        console.error(`Activity not recorded (${event.action}):`, err);
+  async function write({ actorId, projectId = null, taskId = null, event }: ActivityInput, at: Date) {
+    // Description autosave: repeated edits by the same person within a few minutes are one entry.
+    if (event.action === 'task.description_updated' && actorId && taskId) {
+      const recent = await activity.findRecent({ actorId, taskId, action: event.action, since: new Date(at.getTime() - DESCRIPTION_MERGE_MS) });
+      if (recent) {
+        await activity.touch(recent, at);
+        return;
       }
+    }
+    await activity.add({ actorId, type: activityTypeOf(event.action), projectId, taskId, event, createdAt: at });
+  }
+
+  return {
+    async record(input) {
+      const at = nextTime();
+      try {
+        await write(input, at);
+      } catch (err) {
+        console.error(`Activity not recorded (${input.event.action}):`, err);
+      }
+      // Listeners run even if the history write failed: people should still hear about the change.
+      await publish(input, at);
+    },
+    subscribe(listener) {
+      listeners.push(listener);
     },
   };
 }

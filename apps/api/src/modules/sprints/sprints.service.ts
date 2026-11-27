@@ -12,7 +12,7 @@ import {
 import { AppError, conflict, notFoundError } from '../../http/errors';
 import type { Repositories } from '../../repositories';
 import type { Actor } from '../access/actor';
-import type { ActivityRecorder } from '../activity/activity.service';
+import type { ActivityInput, ActivityRecorder } from '../activity/activity.service';
 import type { ProjectsService } from '../projects/projects.service';
 import type { SprintChanges, SprintRecord } from './sprints.repository';
 
@@ -41,8 +41,8 @@ export function createSprintsService(deps: {
 }) {
   const { sprints } = deps.repos;
   const now = deps.now ?? (() => new Date());
-  const record = (actor: Actor, projectId: string, event: Parameters<ActivityRecorder['record']>[0]['event']) =>
-    deps.activity.record({ actorId: actor.user.id, projectId, event });
+  const record = (actor: Actor, projectId: string, event: ActivityInput['event'], sprintId?: string) =>
+    deps.activity.record({ actorId: actor.user.id, projectId, event, ...(sprintId ? { refs: { sprintId } } : {}) });
 
   /** The sprint, checked to belong to a project the actor can see (otherwise 404). */
   async function sprintIn(actor: Actor, projectKey: string, sprintId: string): Promise<SprintRecord> {
@@ -93,7 +93,7 @@ export function createSprintsService(deps: {
     const result = await sprints.start(s.id, now());
     if (result === 'not_planned') throw conflict(s.status === 'active' ? 'This sprint is already active.' : 'Only a planned sprint can be started.');
     if (result === 'another_active') throw conflict('Another sprint is already active in this project. Complete it first.');
-    await record(actor, s.projectId, { action: 'sprint.started', sprint: { name: s.name } });
+    await record(actor, s.projectId, { action: 'sprint.started', sprint: { name: s.name } }, s.id);
     return toSprint(result);
   }
 
@@ -119,7 +119,7 @@ export function createSprintsService(deps: {
       done: inSprint.filter((t) => t.status === 'done').length,
       total: inSprint.length,
       movedTo,
-    });
+    }, s.id);
     return { sprint: toSprint(result.sprint), movedTasks: result.moved };
   }
 

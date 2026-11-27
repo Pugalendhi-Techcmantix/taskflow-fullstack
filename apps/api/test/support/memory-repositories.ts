@@ -24,6 +24,7 @@ import {
 } from '../../src/modules/auth/auth.repository';
 import { ProjectKeyTakenError, type ProjectRecord, type ProjectRepository } from '../../src/modules/projects/projects.repository';
 import type { SprintRecord, SprintRepository } from '../../src/modules/sprints/sprints.repository';
+import type { NewNotification, NotificationRecord, NotificationRepository } from '../../src/modules/notifications/notifications.repository';
 import type { SearchRepository, SearchScope } from '../../src/modules/search/search.repository';
 import type {
   Column,
@@ -187,6 +188,10 @@ export function createMemoryRepositories(now: () => Date) {
       projects.filter((p) => all || p.members.some((m) => m.userId === userId)).map(toRecord),
     findByKey: async (key) => {
       const p = projects.find((x) => x.key === key);
+      return p ? toRecord(p) : null;
+    },
+    findById: async (id) => {
+      const p = projects.find((x) => x.id === id);
       return p ? toRecord(p) : null;
     },
     keyExists: async (key) => projects.some((p) => p.key === key),
@@ -525,6 +530,50 @@ export function createMemoryRepositories(now: () => Date) {
       activity.filter((a) => a.taskId === taskId && tasks.some((t) => t.id === taskId)).toSorted(byNewest).slice(0, limit).map(toActivityRecord),
   };
 
+  /* ---------- notifications ---------- */
+
+  type StoredNotification = Omit<NewNotification, 'data'> & { id: string; data: unknown; readAt: Date | null };
+  const notifications: StoredNotification[] = [];
+  const toNotificationRecord = (n: StoredNotification): NotificationRecord => {
+    const p = n.projectId ? projects.find((x) => x.id === n.projectId) : undefined;
+    const t = n.taskId ? tasks.find((x) => x.id === n.taskId) : undefined;
+    return {
+      id: n.id,
+      userId: n.userId,
+      actor: personRef(n.actorId),
+      project: p ? { id: p.id, key: p.key, name: p.name } : null,
+      task: t ? { id: t.id, number: t.number } : null,
+      data: structuredClone(n.data),
+      readAt: n.readAt,
+      createdAt: n.createdAt,
+    };
+  };
+  const notificationRepo: NotificationRepository = {
+    async addMany(rows) {
+      const created = rows.map((r): StoredNotification => ({ ...r, id: randomUUID(), data: structuredClone(r.data), readAt: null }));
+      notifications.push(...created);
+      return created.map(toNotificationRecord);
+    },
+    async list(userId, { before, limit }) {
+      const older = (n: StoredNotification) => !before || n.createdAt < before.createdAt || (n.createdAt.getTime() === before.createdAt.getTime() && n.id < before.id);
+      return notifications
+        .filter((n) => n.userId === userId && older(n))
+        .toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : -1))
+        .slice(0, limit)
+        .map(toNotificationRecord);
+    },
+    countUnread: async (userId) => notifications.filter((n) => n.userId === userId && n.readAt === null).length,
+    async markRead(userId, id, at) {
+      const n = notifications.find((x) => x.id === id && x.userId === userId);
+      if (!n) return false;
+      n.readAt ??= at;
+      return true;
+    },
+    async markAllRead(userId, at) {
+      for (const n of notifications) if (n.userId === userId && n.readAt === null) n.readAt = at;
+    },
+  };
+
   const repos: Repositories = {
     users: userRepo,
     refreshTokens: tokenRepo,
@@ -535,6 +584,7 @@ export function createMemoryRepositories(now: () => Date) {
     tasks: taskRepo,
     search: searchRepo,
     activity: activityRepo,
+    notifications: notificationRepo,
   };
-  return { repos, users, tokens, grants, invites, projects, sprints, tasks, activity };
+  return { repos, users, tokens, grants, invites, projects, sprints, tasks, activity, notifications };
 }

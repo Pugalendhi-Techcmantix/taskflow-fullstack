@@ -93,7 +93,7 @@ export function createProjectsService(repos: Pick<Repositories, 'projects'>, act
     }
     const updated = await visible(actor, key);
     const member = updated.members.find((m) => m.userId === userId)?.name ?? 'Unknown';
-    await activity.record({ actorId: actor.user.id, projectId: p.id, event: { action: 'project.member_added', project: ref(p), member } });
+    await activity.record({ actorId: actor.user.id, projectId: p.id, event: { action: 'project.member_added', project: ref(p), member }, refs: { memberId: userId } });
     return toProject(updated, actor.user.id);
   }
 
@@ -102,7 +102,7 @@ export function createProjectsService(repos: Pick<Repositories, 'projects'>, act
     const p = await visible(actor, key);
     if (!(await projects.removeMember(p.id, userId))) throw notFoundError('That person is not a member of this project');
     const member = p.members.find((m) => m.userId === userId)?.name ?? 'Unknown';
-    await activity.record({ actorId: actor.user.id, projectId: p.id, event: { action: 'project.member_removed', project: ref(p), member } });
+    await activity.record({ actorId: actor.user.id, projectId: p.id, event: { action: 'project.member_removed', project: ref(p), member }, refs: { memberId: userId } });
   }
 
   return { list, get, isKeyAvailable, create, update, remove, addMember, removeMember, visibleProject: visible };

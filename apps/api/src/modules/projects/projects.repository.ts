@@ -32,6 +32,7 @@ export interface ProjectRepository {
   /** Projects the user is a member of — or every project when `all` (Admins). Oldest first. */
   listVisible(userId: string, all: boolean): Promise<ProjectRecord[]>;
   findByKey(key: string): Promise<ProjectRecord | null>;
+  findById(id: string): Promise<ProjectRecord | null>;
   keyExists(key: string): Promise<boolean>;
   /** Creates the project with its creator as the first member. Throws ProjectKeyTakenError. */
   create(data: NewProject): Promise<ProjectRecord>;

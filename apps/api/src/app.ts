@@ -13,6 +13,8 @@ import { createDashboardRouter } from './modules/dashboard/dashboard.routes';
 import type { DashboardService } from './modules/dashboard/dashboard.service';
 import type { AuthService } from './modules/auth/auth.service';
 import { createRequireAuth } from './modules/auth/require-auth';
+import { createNotificationsRouter } from './modules/notifications/notifications.routes';
+import type { NotificationService } from './modules/notifications/notifications.service';
 import { createProjectsRouter } from './modules/projects/projects.routes';
 import type { ProjectsService } from './modules/projects/projects.service';
 import { createSprintsRouter } from './modules/sprints/sprints.routes';
@@ -32,6 +34,7 @@ export type AppDeps = {
   search: SearchService;
   activity: ActivityService;
   dashboard: DashboardService;
+  notifications: NotificationService;
   /** Resolves when the database answers; rejects otherwise. */
   checkDatabase: () => Promise<void>;
   corsOrigins: string[];
@@ -72,6 +75,7 @@ export function createApp(deps: AppDeps) {
   app.use('/api/projects/:key/dashboard', createDashboardRouter(deps.dashboard, guards));
   app.use('/api/search', createSearchRouter(deps.search, guards));
   app.use('/api/activity', createActivityRouter(deps.activity, guards));
+  app.use('/api/notifications', createNotificationsRouter(deps.notifications, guards));
   app.use('/api/projects', createProjectsRouter(deps.projects, guards));
   app.use('/api', createAccessRouter(deps.access, guards));
 

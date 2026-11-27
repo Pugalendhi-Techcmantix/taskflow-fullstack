@@ -22,6 +22,8 @@ let accessToken: string | null = null;
 export const setAccessToken = (token: string | null) => {
   accessToken = token;
 };
+/** The current access token (the real-time connection sends it in its handshake). */
+export const getAccessToken = () => accessToken;
 
 /** Called when a refresh fails, so the UI can return to the sign-in page. */
 let onSessionExpired: () => void = () => {};

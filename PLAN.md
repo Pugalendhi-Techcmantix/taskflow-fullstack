@@ -97,7 +97,7 @@ Checked side by side on 2026-11-26 (Projects, Sprints, Team & roles, Sign in). T
 | Tasks table pager ("Showing 1–8 of 25", rows per page, ‹ 1 2 3 ›) | Tasks & issues | ✅ Module 7 (sizes 10/25/50/100 instead of 5/8/15/25, see Decisions log) |
 | **History** list inside the task dialog | Task dialog | ✅ Module 8 |
 | Activity history page (day groups, Person / Event type filters, Open link) | Activity history | ✅ Module 8 (also shows the project name on each line, since the timeline spans all projects) |
-| Notification bell with unread count | Top bar | Module 9 |
+| Notification bell with unread count | Top bar | ✅ Module 9 |
 | Dashboard (stats, burndown, workload, my tasks, recent activity) | Dashboard | ✅ Module 10 (workload bars use one colour, the avatar shows the person) |
 
 ---
@@ -200,7 +200,8 @@ Order follows dependencies: each module builds on the ones before it.
 | **Features** | Socket.IO with JWT handshake; one room per project; live board updates for other users; notifications for assignment, mention and status change; bell with unread count; mark one or all as read; reconnect handling |
 | **Tables** | `notifications` |
 | **Done when** | Two browsers see each other's changes live, and a mention reaches the mentioned user. |
-| **Status** | ⬜ Not started |
+| **Built** | `notifications` table (+ CHECK constraints on kind and payload); notification service and live updates both listen to the activity recorder; `GET /api/notifications?cursor` (20 per page, newest first, unread total), `POST /api/notifications/:id/read`, `POST /api/notifications/read-all`; Socket.IO on the API port (access token in the handshake, user room + one room per visible project, rooms follow membership changes); top-bar bell (unread badge, dropdown, mark one / all read, optimistic with rollback, opens the task dialog); live refresh of board, table, sprints, dashboard and activity; live toasts for other people's changes in the project you're viewing; "Reconnecting…" indicator and full refetch after a reconnect. Also notifies on sprint started / completed (prototype wording). |
+| **Status** | ✅ Approved 2026-11-27 |
 
 ### Module 10 — Dashboard & Analytics
 | | |
@@ -233,7 +234,7 @@ Order follows dependencies: each module builds on the ones before it.
 | 6 | Kanban Board | ✅ Approved 2026-11-26 |
 | 7 | Search, Filters & Pagination | ✅ Approved 2026-11-27 |
 | 8 | Activity History | ✅ Approved 2026-11-27 |
-| 9 | Real-Time Notifications | ⏳ In progress |
+| 9 | Real-Time Notifications | ✅ Approved 2026-11-27 |
 | 10 | Dashboard & Analytics | ✅ Approved 2026-11-27 |
 | 11 | Finishing | ⬜ Not started |
 
@@ -286,3 +287,10 @@ Legend: ⬜ not started · ⏳ in progress · 🧪 waiting for user test · ✅ 
 | 2026-11-27 | "Today" for overdue = the server's calendar date; the burndown uses the viewer's calendar (done times are turned into local days in the browser) | Counts must agree between the card and the table (both server-side); the chart is personal and should match the viewer's day |
 | 2026-11-27 | Burndown = sprint total − work Done on or before each day (from `tasks.done_at`), counting tasks when nothing has points | User's choice (recommended): simple and testable. Limitation: uses the sprint as it is now (tasks added mid-sprint count from day 1; a reopened task loses its done day) |
 | 2026-11-27 | Charts follow the dataviz checklist: palette validated (light + dark), 2px lines, legend, crosshair tooltip on hover and ←/→ keys, table view, previous render dimmed while refreshing | Accessible and readable; no value is only reachable by hovering |
+| 2026-11-27 | Notifications and live updates are listeners on the Module 8 activity recorder (`subscribe`), not extra calls in each service | One place decides what happened; a failed listener is logged and never fails the request |
+| 2026-11-27 | Who is notified: assigned → the new assignee; @mention → each mentioned member; status change (dialog or board) → assignee + reporter; sprint started / completed → every project member. Never the person who made the change, and only current project members | Matches the prototype's notifications; non-members must not learn about a project |
+| 2026-11-27 | A notification gets the same time as its history entry (the recorder's strictly increasing clock) | Two changes in the same millisecond keep their order in the bell |
+| 2026-11-27 | Socket.IO runs on the API's port, proxied by Vite at `/socket.io` (same origin); the handshake sends the in-memory access token; a refused handshake refreshes the token once and reconnects | No CORS or cookie changes; the refresh token never reaches page scripts |
+| 2026-11-27 | Live messages say *what* changed; screens refetch through TanStack Query (no data is pushed into the cache except new notifications). After a reconnect everything is refetched | Permissions stay on the normal API routes, and nothing missed while offline stays stale |
+| 2026-11-27 | Live toasts only for other people's changes in the project you're viewing, at most one per person and task every 5 s | Autosave and bursts of edits don't flood the screen |
+| 2026-11-27 | On phones (≤ 420 px) the "Reconnecting…" pill shrinks to its pulsing dot (text kept for screen readers and as a tooltip) | The full pill didn't fit the 375 px top bar |

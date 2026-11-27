@@ -23,7 +23,7 @@ import {
 import { AppError, conflict, forbidden, notFoundError } from '../../http/errors';
 import type { Repositories } from '../../repositories';
 import { isAdmin, type Actor } from '../access/actor';
-import type { ActivityRecorder } from '../activity/activity.service';
+import type { ActivityInput, ActivityRecorder } from '../activity/activity.service';
 import type { ProjectRecord } from '../projects/projects.repository';
 import type { ProjectsService } from '../projects/projects.service';
 import { toSprint } from '../sprints/sprints.service';
@@ -84,8 +84,8 @@ export function createTasksService(deps: {
 
   const ref = (project: ProjectRecord, t: { number: number; title: string }) => ({ key: taskKey(project.key, t.number), title: t.title });
   /** `taskId: null` for a task that no longer exists (its entries stay in the project's history). */
-  const record = (actor: Actor, project: ProjectRecord, taskId: string | null, event: ActivityEvent) =>
-    deps.activity.record({ actorId: actor.user.id, projectId: project.id, taskId, event });
+  const record = (actor: Actor, project: ProjectRecord, taskId: string | null, event: ActivityEvent, refs?: ActivityInput['refs']) =>
+    deps.activity.record({ actorId: actor.user.id, projectId: project.id, taskId, event, ...(refs ? { refs } : {}) });
 
   async function taskIn(project: ProjectRecord, number: number): Promise<TaskDetailRecord> {
     const t = await tasks.findByNumber(project.id, number);
@@ -301,7 +301,7 @@ export function createTasksService(deps: {
     const t = await taskIn(project, number);
     const mentioned = findMentions(body, project.members.map((m) => ({ id: m.userId, name: m.name })));
     await tasks.addComment({ taskId: t.id, authorId: actor.user.id, body, mentionedUserIds: mentioned.map((m) => m.id) });
-    await record(actor, project, t.id, { action: 'comment.added', task: ref(project, t), mentions: mentioned.map((m) => m.name) });
+    await record(actor, project, t.id, { action: 'comment.added', task: ref(project, t), mentions: mentioned.map((m) => m.name) }, { mentionedUserIds: mentioned.map((m) => m.id) });
     return toTaskDetail(await taskIn(project, number));
   }
 

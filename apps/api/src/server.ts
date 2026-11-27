@@ -6,6 +6,8 @@ import { createAccessService } from './modules/access/access.service';
 import { createActivityRecorder, createActivityService } from './modules/activity/activity.service';
 import { createAuthService } from './modules/auth/auth.service';
 import { createDashboardService } from './modules/dashboard/dashboard.service';
+import { createNotificationService } from './modules/notifications/notifications.service';
+import { attachRealtime, createLiveUpdates, createRealtimeHub } from './modules/realtime/realtime';
 import { createProjectsService } from './modules/projects/projects.service';
 import { createSearchService } from './modules/search/search.service';
 import { createSprintsService } from './modules/sprints/sprints.service';
@@ -14,9 +16,12 @@ import { createPrismaRepositories } from './prisma-repositories';
 
 /** Composition root: the only place that connects the app to the real database, email and environment. */
 const repos = createPrismaRepositories(prisma);
-/** Every service reports its changes here (Module 8). */
+/** Every service reports its changes here (Module 8); notifications and live updates listen (Module 9). */
 const activity = createActivityRecorder(repos);
-
+const hub = createRealtimeHub();
+const notifications = createNotificationService({ repos, hub });
+activity.subscribe(notifications.onActivity);
+activity.subscribe(createLiveUpdates({ hub, repos }));
 const auth = createAuthService(repos, {
   jwtSecret: env.JWT_ACCESS_SECRET,
   accessTokenTtlSeconds: env.ACCESS_TOKEN_TTL_SECONDS,
@@ -49,6 +54,8 @@ const sprints = createSprintsService({ repos, projects, activity });
 const tasks = createTasksService({ repos, projects, activity });
 const search = createSearchService(repos);
 
+const corsOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
+
 const app = createApp({
   auth,
   access,
@@ -58,10 +65,11 @@ const app = createApp({
   search,
   activity: createActivityService({ repos, projects }),
   dashboard: createDashboardService({ repos, projects }),
+  notifications,
   checkDatabase: async () => {
     await prisma.$queryRaw`SELECT 1`;
   },
-  corsOrigins: env.CORS_ORIGIN.split(',').map((o) => o.trim()),
+  corsOrigins,
   secureCookies: isProduction,
   rateLimit: true,
 });
@@ -79,8 +87,18 @@ const server = app.listen(env.PORT, () => {
   );
 });
 
+// Real-time (Socket.IO) on the same HTTP server and port as the API.
+const io = attachRealtime(server, {
+  hub,
+  verifyAccessToken: auth.verifyAccessToken,
+  actorOf: access.userWithPermissions,
+  repos,
+  corsOrigins,
+});
+
 function shutdown(signal: string) {
   console.log(`${signal} received, closing server…`);
+  void io.close();
   server.close(() => {
     void prisma.$disconnect().finally(() => process.exit(0));
   });
