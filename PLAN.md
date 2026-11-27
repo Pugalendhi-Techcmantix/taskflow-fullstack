@@ -219,6 +219,15 @@ Order follows dependencies: each module builds on the ones before it.
 | **Status** | ⬜ Not started |
 | **Open question** | Deployment target: where will the client host it? |
 
+### Design upgrade — screen by screen (after the prototype)
+| | |
+|---|---|
+| **Why** | The prototype was the development baseline. Now that every feature works, each screen gets a distinctive, premium, animated look. User's request, 2026-11-27. |
+| **Rules** | One screen at a time; the user reviews and approves each before the next starts. The indigo brand and the app's colour tokens stay, and so do behaviour and wording unless the user asks otherwise. Every screen still needs keyboard access, labels, reduced-motion support, light and dark, and checks at 375 / 768 / 1440 px. Illustrations use abstract shapes, never invented names or data. |
+| **Library** | Motion for React (`motion/react`), loaded through `LazyMotion` with its features fetched on demand |
+| **D1 — Sign in / Create account** | Live animated Kanban board illustration (cards move between columns on their own, live toasts, pointer tilt and spotlight, cards you can grab), drifting aurora background, word-by-word headline; sliding tab pill, fields with icons, show/hide password and Caps Lock warning, shake on a failed attempt, gradient submit with spinner; theme switch. Sign-in behaviour unchanged. **Round 2 (more motion, user's request):** a ~1 s opening once per tab (logo with light rings, name typing in, progress line, curtain lifts; click to skip); rising bubbles on both sides; frosted glass form card with a light beam running round its edge; shimmering title with sparkles; fields glow with a running beam and the icon pops on focus; button with moving gradient, pointer-following glow and click ripple; shooting stars, a beam round the board, a rainbow "ship together." and a sparkle burst when a card lands in Done. Fixes: the illustration's board no longer picks up the real Kanban board's grid style; an error from one tab no longer shows on the other. |
+| **Next** | Chosen by the user after D1 is approved |
+
 ---
 
 ## 6. Status
@@ -237,6 +246,7 @@ Order follows dependencies: each module builds on the ones before it.
 | 9 | Real-Time Notifications | ✅ Approved 2026-11-27 |
 | 10 | Dashboard & Analytics | ✅ Approved 2026-11-27 |
 | 11 | Finishing | ⬜ Not started |
+| D1 | Design upgrade: Sign in / Create account | ✅ Approved 2026-11-27 |
 
 Legend: ⬜ not started · ⏳ in progress · 🧪 waiting for user test · ✅ approved and committed
 
@@ -294,3 +304,8 @@ Legend: ⬜ not started · ⏳ in progress · 🧪 waiting for user test · ✅ 
 | 2026-11-27 | Live messages say *what* changed; screens refetch through TanStack Query (no data is pushed into the cache except new notifications). After a reconnect everything is refetched | Permissions stay on the normal API routes, and nothing missed while offline stays stale |
 | 2026-11-27 | Live toasts only for other people's changes in the project you're viewing, at most one per person and task every 5 s | Autosave and bursts of edits don't flood the screen |
 | 2026-11-27 | On phones (≤ 420 px) the "Reconnecting…" pill shrinks to its pulsing dot (text kept for screen readers and as a tooltip) | The full pill didn't fit the 375 px top bar |
+| 2026-11-27 | Design upgrade track (D1, D2, …): screens are restyled one at a time after the prototype phase, starting with Sign in; the indigo brand and colour tokens stay | User's choice: the prototype was the development baseline, and the product should now look distinctive |
+| 2026-11-27 | Motion for React 14 for UI animation, through `LazyMotion` (features load on demand) and `MotionConfig reducedMotion="user"`; the sign-in illustration is a separate chunk | The user asked for Motion; this keeps first paint light and respects reduced-motion settings |
+| 2026-11-27 | "Magic UI"-style effects (border beam, sparkles, meteors, bubbles, shimmer text, ripple) are rebuilt with Motion + plain CSS, not the Magic UI library | Magic UI needs Tailwind, which this app doesn't use; no new dependency |
+| 2026-11-27 | The sign-in opening plays once per browser tab (sessionStorage), never with reduced motion, and can be skipped with a click | Delights on first visit without slowing down people who sign in often |
+| 2026-11-27 | The sign-in illustration uses abstract cards (type badge, grey lines, coloured avatar dots), no task names or people | "Real data only": an illustration must not look like made-up data |
