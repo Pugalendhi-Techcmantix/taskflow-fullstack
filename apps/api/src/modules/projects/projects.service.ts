@@ -1,7 +1,8 @@
-import { ERROR_CODES, roleSummaryOf, type CreateProjectInput, type Project, type UpdateProjectInput } from '@taskflow/core';
+import { ERROR_CODES, PROJECT_CHANGE_FIELDS, roleSummaryOf, type CreateProjectInput, type Project, type UpdateProjectInput } from '@taskflow/core';
 import { AppError, conflict, notFoundError } from '../../http/errors';
 import type { Repositories } from '../../repositories';
 import { isAdmin, type Actor } from '../access/actor';
+import type { ActivityRecorder } from '../activity/activity.service';
 import { ProjectKeyTakenError, type ProjectChanges, type ProjectRecord } from './projects.repository';
 
 export const toProject = (p: ProjectRecord, viewerId: string): Project => ({
@@ -28,8 +29,9 @@ const keyTaken = () => conflict('This key is already used by another project', {
 
 export type ProjectsService = ReturnType<typeof createProjectsService>;
 
-export function createProjectsService(repos: Pick<Repositories, 'projects'>) {
+export function createProjectsService(repos: Pick<Repositories, 'projects'>, activity: ActivityRecorder) {
   const { projects } = repos;
+  const ref = (p: { key: string; name: string }) => ({ key: p.key, name: p.name });
 
   /** Members and Admins can see a project; for everyone else it does not exist (404, not 403). */
   const canSee = (actor: Actor, p: ProjectRecord) => isAdmin(actor) || p.members.some((m) => m.userId === actor.user.id);
@@ -55,6 +57,7 @@ export function createProjectsService(repos: Pick<Repositories, 'projects'>) {
   async function create(actor: Actor, input: CreateProjectInput): Promise<Project> {
     try {
       const p = await projects.create({ ...input, createdById: actor.user.id });
+      await activity.record({ actorId: actor.user.id, projectId: p.id, event: { action: 'project.created', project: ref(p) } });
       return toProject(p, actor.user.id);
     } catch (err) {
       if (err instanceof ProjectKeyTakenError) throw keyTaken();
@@ -68,12 +71,17 @@ export function createProjectsService(repos: Pick<Repositories, 'projects'>) {
     if (input.name !== undefined) changes.name = input.name;
     if (input.description !== undefined) changes.description = input.description;
     if (input.color !== undefined) changes.color = input.color;
-    return toProject(await projects.update(p.id, changes), actor.user.id);
+    const updated = await projects.update(p.id, changes);
+    const fields = PROJECT_CHANGE_FIELDS.filter((f) => changes[f] !== undefined && changes[f] !== p[f]);
+    if (fields.length) await activity.record({ actorId: actor.user.id, projectId: p.id, event: { action: 'project.updated', project: ref(updated), fields } });
+    return toProject(updated, actor.user.id);
   }
 
+  /** Recorded without a project link (the project is gone), so only Admins see it. */
   async function remove(actor: Actor, key: string): Promise<void> {
     const p = await visible(actor, key);
     await projects.delete(p.id);
+    await activity.record({ actorId: actor.user.id, event: { action: 'project.deleted', project: ref(p) } });
   }
 
   async function addMember(actor: Actor, key: string, userId: string): Promise<Project> {
@@ -83,13 +91,18 @@ export function createProjectsService(repos: Pick<Repositories, 'projects'>) {
     if (result === 'no_such_user') {
       throw new AppError(400, ERROR_CODES.validation, 'That person is not a TaskFlow member', { userId: 'That person is not a TaskFlow member' });
     }
-    return get(actor, key);
+    const updated = await visible(actor, key);
+    const member = updated.members.find((m) => m.userId === userId)?.name ?? 'Unknown';
+    await activity.record({ actorId: actor.user.id, projectId: p.id, event: { action: 'project.member_added', project: ref(p), member } });
+    return toProject(updated, actor.user.id);
   }
 
   /** Removing yourself is allowed; as a non-Admin you then lose access to the project. */
   async function removeMember(actor: Actor, key: string, userId: string): Promise<void> {
     const p = await visible(actor, key);
     if (!(await projects.removeMember(p.id, userId))) throw notFoundError('That person is not a member of this project');
+    const member = p.members.find((m) => m.userId === userId)?.name ?? 'Unknown';
+    await activity.record({ actorId: actor.user.id, projectId: p.id, event: { action: 'project.member_removed', project: ref(p), member } });
   }
 
   return { list, get, isKeyAvailable, create, update, remove, addMember, removeMember, visibleProject: visible };

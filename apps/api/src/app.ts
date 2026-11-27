@@ -6,6 +6,8 @@ import { errorHandler, notFound } from './http/errors';
 import { createAccessRouter } from './modules/access/access.routes';
 import type { AccessService } from './modules/access/access.service';
 import { createActorLookup, createPermissionGuard, type Guards } from './modules/access/actor';
+import { createActivityRouter, createTaskHistoryRouter } from './modules/activity/activity.routes';
+import type { ActivityService } from './modules/activity/activity.service';
 import { createAuthRouter } from './modules/auth/auth.routes';
 import type { AuthService } from './modules/auth/auth.service';
 import { createRequireAuth } from './modules/auth/require-auth';
@@ -26,6 +28,7 @@ export type AppDeps = {
   sprints: SprintsService;
   tasks: TasksService;
   search: SearchService;
+  activity: ActivityService;
   /** Resolves when the database answers; rejects otherwise. */
   checkDatabase: () => Promise<void>;
   corsOrigins: string[];
@@ -59,10 +62,12 @@ export function createApp(deps: AppDeps) {
 
   app.use('/api/auth', createAuthRouter(deps.auth, deps.access, { secureCookies: deps.secureCookies, rateLimit: deps.rateLimit }));
   app.use('/api/projects/:key/sprints', createSprintsRouter(deps.sprints, guards));
+  app.use('/api/projects/:key/tasks/:number/activity', createTaskHistoryRouter(deps.activity, guards));
   app.use('/api/projects/:key/tasks', createTasksRouter(deps.tasks, guards));
   app.use('/api/projects/:key/board', createBoardRouter(deps.tasks, guards));
   app.use('/api/projects/:key/planning', createPlanningRouter(deps.tasks, guards));
   app.use('/api/search', createSearchRouter(deps.search, guards));
+  app.use('/api/activity', createActivityRouter(deps.activity, guards));
   app.use('/api/projects', createProjectsRouter(deps.projects, guards));
   app.use('/api', createAccessRouter(deps.access, guards));
 

@@ -1,4 +1,5 @@
 export * from './access';
+export * from './activity';
 export * from './async';
 export * from './auth';
 export * from './errors';

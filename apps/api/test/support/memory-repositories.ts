@@ -13,6 +13,7 @@ import {
   type TaskSort,
 } from '@taskflow/core';
 import type { InviteRecord, InviteRepository, RoleRepository } from '../../src/modules/access/access.repository';
+import type { ActivityFilter, ActivityRecord, ActivityRepository, NewActivity } from '../../src/modules/activity/activity.repository';
 import {
   EmailTakenError,
   type RefreshTokenRecord,
@@ -460,6 +461,53 @@ export function createMemoryRepositories(now: () => Date) {
     },
   };
 
+  /* ---------- activity history ---------- */
+
+  type StoredActivity = Omit<NewActivity, 'event'> & { id: string; action: string; data: unknown };
+  const activity: StoredActivity[] = [];
+  // Links resolve on read: a deleted user, project or task reads as null, like ON DELETE SET NULL.
+  const toActivityRecord = (a: StoredActivity): ActivityRecord => {
+    const p = a.projectId ? projects.find((x) => x.id === a.projectId) : undefined;
+    const t = a.taskId ? tasks.find((x) => x.id === a.taskId) : undefined;
+    return {
+      id: a.id,
+      type: a.type,
+      actor: personRef(a.actorId),
+      project: p ? { id: p.id, key: p.key, name: p.name } : null,
+      task: t ? { id: t.id, number: t.number } : null,
+      data: structuredClone(a.data),
+      createdAt: a.createdAt,
+    };
+  };
+  const activityVisible = ({ scope, actorId, type }: ActivityFilter) => (a: StoredActivity) => {
+    const member = projects.find((p) => p.id === a.projectId)?.members.some((m) => m.userId === scope.userId) ?? false;
+    return (scope.all || member || (scope.userEvents && a.type === 'user'))
+      && (!actorId || a.actorId === actorId)
+      && (!type || a.type === type);
+  };
+  /** Newest first, then by id (descending), like the SQL ORDER BY. */
+  const byNewest = (a: StoredActivity, b: StoredActivity) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);
+
+  const activityRepo: ActivityRepository = {
+    async add({ event, ...rest }) {
+      activity.push({ ...rest, id: randomUUID(), action: event.action, data: structuredClone(event) });
+    },
+    async findRecent({ actorId, taskId, action, since }) {
+      return activity.filter((a) => a.actorId === actorId && a.taskId === taskId && a.action === action && a.createdAt >= since).toSorted(byNewest)[0]?.id ?? null;
+    },
+    async touch(id, at) {
+      const a = activity.find((x) => x.id === id);
+      if (a) a.createdAt = at;
+    },
+    async list(filter, { before, limit }) {
+      const older = (a: StoredActivity) => !before || a.createdAt < before.createdAt || (a.createdAt.getTime() === before.createdAt.getTime() && a.id < before.id);
+      return activity.filter((a) => activityVisible(filter)(a) && older(a)).toSorted(byNewest).slice(0, limit).map(toActivityRecord);
+    },
+    count: async (filter) => activity.filter(activityVisible(filter)).length,
+    listForTask: async (taskId, limit) =>
+      activity.filter((a) => a.taskId === taskId && tasks.some((t) => t.id === taskId)).toSorted(byNewest).slice(0, limit).map(toActivityRecord),
+  };
+
   const repos: Repositories = {
     users: userRepo,
     refreshTokens: tokenRepo,
@@ -469,6 +517,7 @@ export function createMemoryRepositories(now: () => Date) {
     sprints: sprintRepo,
     tasks: taskRepo,
     search: searchRepo,
+    activity: activityRepo,
   };
-  return { repos, users, tokens, grants, invites, projects, sprints, tasks };
+  return { repos, users, tokens, grants, invites, projects, sprints, tasks, activity };
 }

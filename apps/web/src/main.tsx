@@ -8,6 +8,7 @@ import { NAV_ITEMS } from './app/nav';
 import { AuthPage } from './features/auth/AuthPage';
 import { RequireAuth } from './features/auth/RequireAuth';
 import { restoreSession } from './features/auth/session';
+import { ActivityPage } from './features/activity/ActivityPage';
 import { AcceptInvitePage } from './features/team/AcceptInvitePage';
 import { TeamPage } from './features/team/TeamPage';
 import { ProjectLayout, ProjectOverview } from './features/projects/ProjectPage';
@@ -48,6 +49,7 @@ const router = createBrowserRouter([
               { path: '/sprints', element: <ProjectSectionRedirect section="sprints" /> },
               { path: '/tasks', element: <ProjectSectionRedirect section="tasks" /> },
               { path: '/team', element: <TeamPage /> },
+              { path: '/activity', element: <ActivityPage /> },
               ...NAV_ITEMS.filter((n) => n.path !== '/' && !n.built).map((n) => ({ path: n.path, element: <ComingSoonPage path={n.path} /> })),
               { path: '*', element: <NotFoundPage /> },
             ],

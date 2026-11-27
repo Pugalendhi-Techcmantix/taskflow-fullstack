@@ -472,3 +472,27 @@ dialog.modal.shortcuts { width: min(680px, calc(100% - 32px)); }
   /* the box is narrow on phones: let the results use the full width under the top bar */
   .search-pop { position: fixed; top: 60px; left: 8px; right: 8px; max-height: calc(100dvh - 76px); }
 }
+
+/* Module 8: activity timeline and task history (prototype) */
+.timeline { position: relative; padding-left: 8px; }
+.tl-day { font-size: 12px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; margin: 18px 0 6px; }
+.timeline section:first-child .tl-day { margin-top: 0; }
+.tl-list, .hist-list { list-style: none; margin: 0; padding: 0; }
+.tl-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
+.tl-list .tl-item:last-child { border-bottom: none; }
+.tl-body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.tl-icon { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.tl-task { background: var(--blue-soft); color: var(--blue); }
+.tl-sprint { background: var(--green-soft); color: var(--green); }
+.tl-project { background: var(--purple-soft); color: var(--purple); }
+.tl-comment { background: var(--amber-soft); color: var(--amber); }
+.tl-user { background: var(--gray-soft); color: var(--muted); }
+.tl-open { font-size: 12px; margin-left: 6px; color: var(--accent); font-weight: 600; text-decoration: none; }
+.tl-open:hover { text-decoration: underline; }
+/* keys and names never break in the middle ("QA-" / "101") */
+.tl-body b, .hist b { white-space: nowrap; }
+.tl-more { display: flex; justify-content: center; padding: 14px 0 4px; border-top: 1px solid var(--border); margin-top: 4px; }
+.timeline code, .hist code { font-size: 12px; background: var(--surface-2); border-radius: 4px; padding: 1px 5px; }
+.hist { font-size: 12.5px; color: var(--muted); padding: 5px 0; display: flex; gap: 8px; align-items: flex-start; }
+.hist b { color: var(--text); }
+.avatar.xs { width: 18px; height: 18px; font-size: 7.5px; flex: none; margin-top: 1px; }

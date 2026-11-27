@@ -7,6 +7,7 @@ import { Icon } from '../../app/icons';
 import { toast } from '../../app/toast';
 import { timeAgo } from '../../lib/dates';
 import { ApiError } from '../../lib/http';
+import { activityKeys } from '../activity/activity-api';
 import { reloadSessionUser, useCan, useSession } from '../auth/session';
 import { addComment, addSubtask, deleteComment, deleteSubtask, patchTaskLists, taskKeys, updateSubtask } from './tasks-api';
 
@@ -32,6 +33,7 @@ function useTaskItemMutation<V>(ctx: Ctx, fn: (vars: V) => Promise<{ task: TaskD
     },
     onSuccess: ({ task }) => {
       qc.setQueryData(detailKey, { task });
+      void qc.invalidateQueries({ queryKey: activityKeys.task(ctx.project.key, ctx.task.number) });
       // keep the table's counters (subtasks done, comments) in step
       patchTaskLists(qc, ctx.project.key, (x) => (x.id === task.id ? { ...x, subtasks: task.subtasks, commentCount: task.commentCount } : x));
     },

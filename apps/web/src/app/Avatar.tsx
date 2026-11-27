@@ -11,7 +11,7 @@ export function avatarColor(id: string): string {
 export const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
 
-type Props = { id: string; name: string; size?: 'sm' | 'md' | 'lg'; title?: string };
+type Props = { id: string; name: string; size?: 'xs' | 'sm' | 'md' | 'lg'; title?: string };
 
 /** Round initials badge. Decorative unless a title is given (the name is usually shown next to it). */
 export function Avatar({ id, name, size = 'md', title }: Props) {

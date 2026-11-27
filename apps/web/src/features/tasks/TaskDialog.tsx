@@ -24,6 +24,7 @@ import { Icon } from '../../app/icons';
 import { toast } from '../../app/toast';
 import { formatDay } from '../../lib/dates';
 import { ApiError } from '../../lib/http';
+import { TaskHistory } from '../activity/TaskHistory';
 import { reloadSessionUser, useCan } from '../auth/session';
 import { projectKeys } from '../projects/projects-api';
 import { fetchSprints, sprintKeys } from '../sprints/sprints-api';
@@ -203,6 +204,7 @@ function TaskBody({ task: t, project, sprints, editable, canDelete, onChange, on
 
           <Subtasks project={project} task={t} editable={editable} />
           <Comments project={project} task={t} />
+          <TaskHistory projectKey={project.key} number={t.number} />
         </div>
 
         <aside className="task-side" aria-label="Task fields">

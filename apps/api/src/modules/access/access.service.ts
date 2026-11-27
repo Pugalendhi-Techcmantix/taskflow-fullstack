@@ -17,6 +17,7 @@ import {
 import type { EmailSender } from '../../email/email-sender';
 import { AppError, conflict, notFoundError, unauthorized } from '../../http/errors';
 import type { Repositories } from '../../repositories';
+import type { ActivityRecorder } from '../activity/activity.service';
 import type { UserRecord } from '../auth/auth.repository';
 import { isOpen, type InviteRecord } from './access.repository';
 import { inviteEmail } from './invite-email';
@@ -32,6 +33,7 @@ export type AccessDeps = {
   email: EmailSender;
   hashPassword: (password: string) => Promise<string>;
   config: AccessConfig;
+  activity: ActivityRecorder;
   now?: () => Date;
 };
 
@@ -50,7 +52,7 @@ export const toInvite = (i: InviteRecord): Invite => ({
 
 export type AccessService = ReturnType<typeof createAccessService>;
 
-export function createAccessService({ repos, email, hashPassword, config, now = () => new Date() }: AccessDeps) {
+export function createAccessService({ repos, email, hashPassword, config, activity, now = () => new Date() }: AccessDeps) {
   const { users, roles, invites } = repos;
 
   /* ---------- permissions ---------- */
@@ -80,9 +82,11 @@ export function createAccessService({ repos, email, hashPassword, config, now = 
     };
   }
 
-  async function setPermission(roleId: RoleId, key: PermissionKey, granted: boolean) {
+  async function setPermission(actorId: string, roleId: RoleId, key: PermissionKey, granted: boolean) {
     if (roleId === ADMIN_ROLE) throw conflict('The Admin role always has every permission.');
+    const had = (await roles.permissionsOf(roleId)).includes(key);
     await roles.setPermission(roleId, key, granted);
+    if (had !== granted) await activity.record({ actorId, event: { action: 'user.permission_changed', role: roleId, permission: key, granted } });
     const updated = (await listRoles()).roles.find((r) => r.id === roleId);
     if (!updated) throw notFoundError('Role not found');
     return updated;
@@ -98,11 +102,15 @@ export function createAccessService({ repos, email, hashPassword, config, now = 
 
   async function changeRole(actorId: string, targetId: string, roleId: RoleId): Promise<UserRecord> {
     if (actorId === targetId) throw conflict("You can't change your own role. Ask another Admin.");
+    const before = await users.findById(targetId);
     const result = await users.changeRole(targetId, roleId);
     if (result === 'not_found') throw notFoundError('Member not found');
     if (result === 'last_admin') throw conflict('TaskFlow needs at least one Admin. Make someone else Admin first.');
     const user = await users.findById(targetId);
     if (!user) throw notFoundError('Member not found');
+    if (before && before.roleId !== user.roleId) {
+      await activity.record({ actorId, event: { action: 'user.role_changed', member: user.name, from: before.roleId, to: user.roleId } });
+    }
     return user;
   }
 
@@ -139,6 +147,7 @@ export function createAccessService({ repos, email, hashPassword, config, now = 
     const { token, tokenHash, expiresAt } = newToken();
     const invite = await invites.replaceOpen({ email: input.email, roleId: input.roleId, tokenHash, invitedById: actorId, expiresAt }, now());
     await sendInviteEmail(invite, token);
+    await activity.record({ actorId, event: { action: 'user.invited', email: invite.email, role: invite.roleId } });
     return toInvite(invite);
   }
 
@@ -146,16 +155,19 @@ export function createAccessService({ repos, email, hashPassword, config, now = 
     return (await invites.listOpen(now())).map(toInvite);
   }
 
-  async function revokeInvite(id: string): Promise<void> {
-    if (!(await invites.revoke(id, now()))) throw notFoundError('Invite not found or already used');
+  async function revokeInvite(actorId: string, id: string): Promise<void> {
+    const invite = await invites.findById(id);
+    if (!invite || !(await invites.revoke(id, now()))) throw notFoundError('Invite not found or already used');
+    await activity.record({ actorId, event: { action: 'user.invite_revoked', email: invite.email } });
   }
 
   /** Sends a fresh link; the previous link stops working. */
-  async function resendInvite(id: string): Promise<Invite> {
+  async function resendInvite(actorId: string, id: string): Promise<Invite> {
     const { token, tokenHash, expiresAt } = newToken();
     const invite = await invites.renew(id, now(), tokenHash, expiresAt);
     if (!invite) throw notFoundError('Invite not found, already used or expired');
     await sendInviteEmail(invite, token);
+    await activity.record({ actorId, event: { action: 'user.invite_resent', email: invite.email } });
     return toInvite(invite);
   }
 
@@ -185,6 +197,7 @@ export function createAccessService({ repos, email, hashPassword, config, now = 
     });
     if (result === 'unavailable') throw invalidInvite();
     if (result === 'email_taken') throw conflict('An account with this email already exists. Sign in instead.');
+    await activity.record({ actorId: result.id, event: { action: 'user.joined', via: 'invite', role: result.roleId } });
     return result;
   }
 

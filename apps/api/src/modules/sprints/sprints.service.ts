@@ -1,5 +1,6 @@
 import {
   MAX_SPRINT_DAYS,
+  SPRINT_CHANGE_FIELDS,
   daysBetween,
   sortSprints,
   ERROR_CODES,
@@ -11,6 +12,7 @@ import {
 import { AppError, conflict, notFoundError } from '../../http/errors';
 import type { Repositories } from '../../repositories';
 import type { Actor } from '../access/actor';
+import type { ActivityRecorder } from '../activity/activity.service';
 import type { ProjectsService } from '../projects/projects.service';
 import type { SprintChanges, SprintRecord } from './sprints.repository';
 
@@ -32,12 +34,15 @@ const notFound = () => notFoundError('Sprint not found');
 export type SprintsService = ReturnType<typeof createSprintsService>;
 
 export function createSprintsService(deps: {
-  repos: Pick<Repositories, 'sprints'>;
+  repos: Pick<Repositories, 'sprints' | 'tasks'>;
   projects: Pick<ProjectsService, 'visibleProject'>;
+  activity: ActivityRecorder;
   now?: () => Date;
 }) {
   const { sprints } = deps.repos;
   const now = deps.now ?? (() => new Date());
+  const record = (actor: Actor, projectId: string, event: Parameters<ActivityRecorder['record']>[0]['event']) =>
+    deps.activity.record({ actorId: actor.user.id, projectId, event });
 
   /** The sprint, checked to belong to a project the actor can see (otherwise 404). */
   async function sprintIn(actor: Actor, projectKey: string, sprintId: string): Promise<SprintRecord> {
@@ -54,7 +59,9 @@ export function createSprintsService(deps: {
 
   async function create(actor: Actor, projectKey: string, input: CreateSprintInput): Promise<Sprint> {
     const project = await deps.projects.visibleProject(actor, projectKey);
-    return toSprint(await sprints.create({ projectId: project.id, ...input }));
+    const created = await sprints.create({ projectId: project.id, ...input });
+    await record(actor, project.id, { action: 'sprint.created', sprint: { name: created.name } });
+    return toSprint(created);
   }
 
   /** Planned: anything. Active: name, goal and end date. Completed: nothing. */
@@ -75,7 +82,10 @@ export function createSprintsService(deps: {
     if (input.goal !== undefined) changes.goal = input.goal;
     if (input.startDate !== undefined) changes.startDate = input.startDate;
     if (input.endDate !== undefined) changes.endDate = input.endDate;
-    return toSprint(await sprints.update(s.id, changes));
+    const updated = await sprints.update(s.id, changes);
+    const fields = SPRINT_CHANGE_FIELDS.filter((f) => changes[f] !== undefined && changes[f] !== s[f]);
+    if (fields.length) await record(actor, s.projectId, { action: 'sprint.updated', sprint: { name: updated.name }, fields });
+    return toSprint(updated);
   }
 
   async function start(actor: Actor, projectKey: string, sprintId: string): Promise<Sprint> {
@@ -83,6 +93,7 @@ export function createSprintsService(deps: {
     const result = await sprints.start(s.id, now());
     if (result === 'not_planned') throw conflict(s.status === 'active' ? 'This sprint is already active.' : 'Only a planned sprint can be started.');
     if (result === 'another_active') throw conflict('Another sprint is already active in this project. Complete it first.');
+    await record(actor, s.projectId, { action: 'sprint.started', sprint: { name: s.name } });
     return toSprint(result);
   }
 
@@ -90,21 +101,32 @@ export function createSprintsService(deps: {
   async function complete(actor: Actor, projectKey: string, sprintId: string, input: CompleteSprintInput): Promise<{ sprint: Sprint; movedTasks: number }> {
     const s = await sprintIn(actor, projectKey, sprintId);
     let moveTo: string | null = null;
+    let movedTo: string | null = null; // sprint name for the history, null = backlog
     if (input.moveUnfinishedTo !== 'backlog') {
       const target = await sprints.findById(input.moveUnfinishedTo);
       if (!target || target.projectId !== s.projectId || target.id === s.id || target.status !== 'planned') {
         throw new AppError(400, ERROR_CODES.validation, 'Unfinished tasks can only move to a planned sprint of this project', { moveUnfinishedTo: 'Pick a planned sprint or the backlog' });
       }
       moveTo = target.id;
+      movedTo = target.name;
     }
+    const inSprint = await deps.repos.tasks.listBySprint(s.id);
     const result = await sprints.complete(s.id, now(), moveTo);
     if (result === 'not_active') throw conflict('Only the active sprint can be completed.');
+    await record(actor, s.projectId, {
+      action: 'sprint.completed',
+      sprint: { name: s.name },
+      done: inSprint.filter((t) => t.status === 'done').length,
+      total: inSprint.length,
+      movedTo,
+    });
     return { sprint: toSprint(result.sprint), movedTasks: result.moved };
   }
 
   async function remove(actor: Actor, projectKey: string, sprintId: string): Promise<void> {
     const s = await sprintIn(actor, projectKey, sprintId);
     if (!(await sprints.deletePlanned(s.id))) throw conflict('Only a planned sprint can be deleted.');
+    await record(actor, s.projectId, { action: 'sprint.deleted', sprint: { name: s.name } });
   }
 
   return { list, create, update, start, complete, remove };

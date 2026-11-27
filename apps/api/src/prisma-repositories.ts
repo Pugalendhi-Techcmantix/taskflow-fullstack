@@ -1,5 +1,6 @@
 import type { PrismaClient } from '../generated/client';
 import { createPrismaInviteRepository, createPrismaRoleRepository } from './modules/access/prisma-access.repository';
+import { createPrismaActivityRepository } from './modules/activity/prisma-activity.repository';
 import { createPrismaRefreshTokenRepository, createPrismaUserRepository } from './modules/auth/prisma-auth.repository';
 import { createPrismaProjectRepository } from './modules/projects/prisma-projects.repository';
 import { createPrismaSearchRepository } from './modules/search/prisma-search.repository';
@@ -17,5 +18,6 @@ export function createPrismaRepositories(prisma: PrismaClient): Repositories {
     sprints: createPrismaSprintRepository(prisma),
     tasks: createPrismaTaskRepository(prisma),
     search: createPrismaSearchRepository(prisma),
+    activity: createPrismaActivityRepository(prisma),
   };
 }

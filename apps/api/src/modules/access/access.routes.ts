@@ -29,7 +29,7 @@ export function createAccessRouter(access: AccessService, { signedIn, requirePer
   router.put('/roles/:roleId/permissions/:permissionKey', signedIn, requirePermission('role:manage'), async (req, res) => {
     const { roleId, permissionKey } = parse(z.object({ roleId: roleIdSchema, permissionKey: permissionKeySchema }), req.params);
     const { granted } = parse(setPermissionInput, req.body);
-    res.json({ role: await access.setPermission(roleId, permissionKey, granted) });
+    res.json({ role: await access.setPermission(currentUserId(req), roleId, permissionKey, granted) });
   });
 
   /* ---------- members ---------- */
@@ -58,12 +58,12 @@ export function createAccessRouter(access: AccessService, { signedIn, requirePer
 
   router.post('/invites/:id/resend', signedIn, requirePermission('user:manage'), async (req, res) => {
     const { id } = parse(idParam, req.params);
-    res.json({ invite: await access.resendInvite(id) });
+    res.json({ invite: await access.resendInvite(currentUserId(req), id) });
   });
 
   router.delete('/invites/:id', signedIn, requirePermission('user:manage'), async (req, res) => {
     const { id } = parse(idParam, req.params);
-    await access.revokeInvite(id);
+    await access.revokeInvite(currentUserId(req), id);
     res.status(204).end();
   });
 

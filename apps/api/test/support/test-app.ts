@@ -3,6 +3,7 @@ import { authResponse, type RoleId } from '@taskflow/core';
 import { createApp } from '../../src/app';
 import type { EmailMessage, EmailSender } from '../../src/email/email-sender';
 import { createAccessService } from '../../src/modules/access/access.service';
+import { createActivityRecorder, createActivityService } from '../../src/modules/activity/activity.service';
 import { createAuthService } from '../../src/modules/auth/auth.service';
 import { createProjectsService } from '../../src/modules/projects/projects.service';
 import { createSearchService } from '../../src/modules/search/search.service';
@@ -33,9 +34,11 @@ export function createTestApp() {
   };
 
   const store = createMemoryRepositories(clock.now);
+  const activity = createActivityRecorder(store.repos, clock.now);
   const auth = createAuthService(
     store.repos,
     { jwtSecret: 'test-secret-that-is-at-least-32-characters-long', accessTokenTtlSeconds: 900, refreshTokenTtlDays: 14, bcryptRounds: 4 },
+    activity,
     clock.now,
   );
   const access = createAccessService({
@@ -43,16 +46,18 @@ export function createTestApp() {
     email,
     hashPassword: auth.hashPassword,
     config: { appUrl: 'http://localhost:5200', inviteTtlDays: 7 },
+    activity,
     now: clock.now,
   });
-  const projects = createProjectsService(store.repos);
+  const projects = createProjectsService(store.repos, activity);
   const app = createApp({
     auth,
     access,
     projects,
-    sprints: createSprintsService({ repos: store.repos, projects, now: clock.now }),
-    tasks: createTasksService({ repos: store.repos, projects, now: clock.now }),
+    sprints: createSprintsService({ repos: store.repos, projects, activity, now: clock.now }),
+    tasks: createTasksService({ repos: store.repos, projects, activity, now: clock.now }),
     search: createSearchService(store.repos),
+    activity: createActivityService({ repos: store.repos, projects }),
     checkDatabase: async () => {},
     corsOrigins: ['http://localhost:5200'],
     secureCookies: false,

@@ -3,6 +3,7 @@ import { prisma } from './db';
 import { createConsoleEmailSender, createSmtpEmailSender } from './email/email-sender';
 import { env, isProduction } from './env';
 import { createAccessService } from './modules/access/access.service';
+import { createActivityRecorder, createActivityService } from './modules/activity/activity.service';
 import { createAuthService } from './modules/auth/auth.service';
 import { createProjectsService } from './modules/projects/projects.service';
 import { createSearchService } from './modules/search/search.service';
@@ -12,13 +13,15 @@ import { createPrismaRepositories } from './prisma-repositories';
 
 /** Composition root: the only place that connects the app to the real database, email and environment. */
 const repos = createPrismaRepositories(prisma);
+/** Every service reports its changes here (Module 8). */
+const activity = createActivityRecorder(repos);
 
 const auth = createAuthService(repos, {
   jwtSecret: env.JWT_ACCESS_SECRET,
   accessTokenTtlSeconds: env.ACCESS_TOKEN_TTL_SECONDS,
   refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
   bcryptRounds: env.BCRYPT_ROUNDS,
-});
+}, activity);
 
 const smtp = env.SMTP_HOST
   ? createSmtpEmailSender({
@@ -37,11 +40,12 @@ const access = createAccessService({
   email,
   hashPassword: auth.hashPassword,
   config: { appUrl: env.APP_URL, inviteTtlDays: env.INVITE_TTL_DAYS },
+  activity,
 });
 
-const projects = createProjectsService(repos);
-const sprints = createSprintsService({ repos, projects });
-const tasks = createTasksService({ repos, projects });
+const projects = createProjectsService(repos, activity);
+const sprints = createSprintsService({ repos, projects, activity });
+const tasks = createTasksService({ repos, projects, activity });
 const search = createSearchService(repos);
 
 const app = createApp({
@@ -51,6 +55,7 @@ const app = createApp({
   sprints,
   tasks,
   search,
+  activity: createActivityService({ repos, projects }),
   checkDatabase: async () => {
     await prisma.$queryRaw`SELECT 1`;
   },

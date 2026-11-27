@@ -1,12 +1,15 @@
 import {
   ERROR_CODES,
   MIN_POSITION_GAP,
+  TASK_CHANGE_FIELDS,
   findMentions,
   pageCount,
   positionBetween,
   taskKey,
+  type ActivityEvent,
   type Board,
   type CreateTaskInput,
+  type TaskChangeField,
   type MoveTaskInput,
   type TaskDetail,
   type TaskListQuery,
@@ -19,6 +22,7 @@ import {
 import { AppError, conflict, forbidden, notFoundError } from '../../http/errors';
 import type { Repositories } from '../../repositories';
 import { isAdmin, type Actor } from '../access/actor';
+import type { ActivityRecorder } from '../activity/activity.service';
 import type { ProjectRecord } from '../projects/projects.repository';
 import type { ProjectsService } from '../projects/projects.service';
 import { toSprint } from '../sprints/sprints.service';
@@ -57,13 +61,30 @@ const fieldError = (field: string, message: string) => new AppError(400, ERROR_C
 
 export type TasksService = ReturnType<typeof createTasksService>;
 
+/** A task field's value as the history shows it (codes for status/priority/type, names for people and sprints). */
+const SHOWN: Record<TaskChangeField, (t: TaskRecord) => string | null> = {
+  status: (t) => t.status,
+  priority: (t) => t.priority,
+  type: (t) => t.type,
+  points: (t) => (t.points === null ? null : String(t.points)),
+  assignee: (t) => t.assignee?.name ?? null,
+  sprint: (t) => t.sprint?.name ?? null,
+  dueDate: (t) => t.dueDate,
+};
+
 export function createTasksService(deps: {
   repos: Pick<Repositories, 'tasks' | 'sprints'>;
   projects: Pick<ProjectsService, 'visibleProject'>;
+  activity: ActivityRecorder;
   now?: () => Date;
 }) {
   const { tasks, sprints } = deps.repos;
   const now = deps.now ?? (() => new Date());
+
+  const ref = (project: ProjectRecord, t: { number: number; title: string }) => ({ key: taskKey(project.key, t.number), title: t.title });
+  /** `taskId: null` for a task that no longer exists (its entries stay in the project's history). */
+  const record = (actor: Actor, project: ProjectRecord, taskId: string | null, event: ActivityEvent) =>
+    deps.activity.record({ actorId: actor.user.id, projectId: project.id, taskId, event });
 
   async function taskIn(project: ProjectRecord, number: number): Promise<TaskDetailRecord> {
     const t = await tasks.findByNumber(project.id, number);
@@ -126,6 +147,7 @@ export function createTasksService(deps: {
       doneAt: input.status === 'done' ? now() : null,
       position: await endOf({ projectId: project.id, sprintId: input.sprintId, status: input.status }),
     });
+    await record(actor, project, created.id, { action: 'task.created', task: ref(project, created) });
     return toTaskDetail(await taskIn(project, created.number));
   }
 
@@ -156,7 +178,17 @@ export function createTasksService(deps: {
       changes.position = await endOf({ projectId: project.id, sprintId, status });
     }
     await tasks.update(t.id, changes);
-    return toTaskDetail(await taskIn(project, number));
+    const after = await taskIn(project, number);
+
+    // One history entry per changed field, with the values before and after.
+    const task = ref(project, after);
+    if (after.title !== t.title) await record(actor, project, t.id, { action: 'task.renamed', task, from: t.title });
+    if (after.description !== t.description) await record(actor, project, t.id, { action: 'task.description_updated', task });
+    for (const field of TASK_CHANGE_FIELDS) {
+      const [from, to] = [SHOWN[field](t), SHOWN[field](after)];
+      if (from !== to) await record(actor, project, t.id, { action: 'task.changed', task, field, from, to });
+    }
+    return toTaskDetail(after);
   }
 
   /* ---------- board ---------- */
@@ -209,13 +241,19 @@ export function createTasksService(deps: {
     const changes: TaskChanges = { status: input.status, position };
     const doneAt = doneAtFor(t.status, input.status);
     if (doneAt !== undefined) changes.doneAt = doneAt;
-    return toTaskSummary(await tasks.update(t.id, changes));
+    const moved = await tasks.update(t.id, changes);
+    // Reordering inside a column is not history; a column change is.
+    if (t.status !== input.status) {
+      await record(actor, project, t.id, { action: 'task.moved', task: ref(project, t), from: t.status, to: input.status });
+    }
+    return toTaskSummary(moved);
   }
 
   async function remove(actor: Actor, projectKey: string, number: number): Promise<void> {
     const project = await deps.projects.visibleProject(actor, projectKey);
     const t = await taskIn(project, number);
     await tasks.delete(t.id);
+    await record(actor, project, null, { action: 'task.deleted', task: ref(project, t) });
   }
 
   /* ---------- subtasks ---------- */
@@ -224,6 +262,7 @@ export function createTasksService(deps: {
     const project = await deps.projects.visibleProject(actor, projectKey);
     const t = await taskIn(project, number);
     await tasks.addSubtask(t.id, title);
+    await record(actor, project, t.id, { action: 'subtask.added', task: ref(project, t), subtask: title });
     return toTaskDetail(await taskIn(project, number));
   }
 
@@ -233,14 +272,23 @@ export function createTasksService(deps: {
     const changes: { title?: string; done?: boolean } = {};
     if (input.title !== undefined) changes.title = input.title;
     if (input.done !== undefined) changes.done = input.done;
-    if (!(await tasks.updateSubtask(t.id, subtaskId, changes))) throw notFoundError('Subtask not found');
+    const before = t.subtasks.find((s) => s.id === subtaskId);
+    const after = await tasks.updateSubtask(t.id, subtaskId, changes);
+    if (!before || !after) throw notFoundError('Subtask not found');
+    const task = ref(project, t);
+    if (after.title !== before.title) await record(actor, project, t.id, { action: 'subtask.renamed', task, subtask: after.title, from: before.title });
+    if (after.done !== before.done) {
+      await record(actor, project, t.id, { action: after.done ? 'subtask.completed' : 'subtask.reopened', task, subtask: after.title });
+    }
     return toTaskDetail(await taskIn(project, number));
   }
 
   async function deleteSubtask(actor: Actor, projectKey: string, number: number, subtaskId: string): Promise<TaskDetail> {
     const project = await deps.projects.visibleProject(actor, projectKey);
     const t = await taskIn(project, number);
-    if (!(await tasks.deleteSubtask(t.id, subtaskId))) throw notFoundError('Subtask not found');
+    const removed = t.subtasks.find((s) => s.id === subtaskId);
+    if (!removed || !(await tasks.deleteSubtask(t.id, subtaskId))) throw notFoundError('Subtask not found');
+    await record(actor, project, t.id, { action: 'subtask.removed', task: ref(project, t), subtask: removed.title });
     return toTaskDetail(await taskIn(project, number));
   }
 
@@ -252,6 +300,7 @@ export function createTasksService(deps: {
     const t = await taskIn(project, number);
     const mentioned = findMentions(body, project.members.map((m) => ({ id: m.userId, name: m.name })));
     await tasks.addComment({ taskId: t.id, authorId: actor.user.id, body, mentionedUserIds: mentioned.map((m) => m.id) });
+    await record(actor, project, t.id, { action: 'comment.added', task: ref(project, t), mentions: mentioned.map((m) => m.name) });
     return toTaskDetail(await taskIn(project, number));
   }
 
@@ -263,6 +312,7 @@ export function createTasksService(deps: {
     if (!found) throw notFoundError('Comment not found');
     if (found.authorId !== actor.user.id && !isAdmin(actor)) throw forbidden('You can only delete your own comments');
     await tasks.deleteComment(t.id, commentId);
+    await record(actor, project, t.id, { action: 'comment.deleted', task: ref(project, t) });
     return toTaskDetail(await taskIn(project, number));
   }
 

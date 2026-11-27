@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { roleSummaryOf, type LoginInput, type PublicUser, type RegisterInput } from '@taskflow/core';
 import { conflict, unauthorized } from '../../http/errors';
 import type { Repositories } from '../../repositories';
+import type { ActivityRecorder } from '../activity/activity.service';
 import { EmailTakenError, type UserRecord } from './auth.repository';
 
 export type AuthConfig = {
@@ -34,7 +35,12 @@ const hashToken = (token: string) => createHash('sha256').update(token).digest('
 
 export type AuthService = ReturnType<typeof createAuthService>;
 
-export function createAuthService(repos: Pick<Repositories, 'users' | 'refreshTokens'>, config: AuthConfig, now: () => Date = () => new Date()) {
+export function createAuthService(
+  repos: Pick<Repositories, 'users' | 'refreshTokens'>,
+  config: AuthConfig,
+  activity: ActivityRecorder,
+  now: () => Date = () => new Date(),
+) {
   const { users, refreshTokens } = repos;
   /** Compared against when the email does not exist, so a wrong email takes as long as a wrong password. */
   const dummyHash = bcrypt.hashSync('timing-equaliser-not-a-real-password', config.bcryptRounds);
@@ -47,10 +53,12 @@ export function createAuthService(repos: Pick<Repositories, 'users' | 'refreshTo
   async function register(input: RegisterInput): Promise<UserRecord> {
     const passwordHash = await hashPassword(input.password);
     try {
-      return await users.create(
+      const user = await users.create(
         { name: input.name, email: input.email, passwordHash },
         { kind: 'firstUserIsAdmin', others: 'viewer' },
       );
+      await activity.record({ actorId: user.id, event: { action: 'user.joined', via: 'signup', role: user.roleId } });
+      return user;
     } catch (err) {
       if (err instanceof EmailTakenError) {
         throw conflict('An account with this email already exists', { email: 'An account with this email already exists' });

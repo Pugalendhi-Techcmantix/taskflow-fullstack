@@ -95,7 +95,8 @@ Checked side by side on 2026-11-26 (Projects, Sprints, Team & roles, Sign in). T
 | **Open board** button on the active sprint | Sprints | ✅ Module 6 |
 | Global search bar ("press /") and keyboard-shortcut help (`?`, `C`, `G` then a letter) | Top bar | ✅ Module 7 |
 | Tasks table pager ("Showing 1–8 of 25", rows per page, ‹ 1 2 3 ›) | Tasks & issues | ✅ Module 7 (sizes 10/25/50/100 instead of 5/8/15/25, see Decisions log) |
-| **History** list inside the task dialog | Task dialog | Module 8 |
+| **History** list inside the task dialog | Task dialog | ✅ Module 8 |
+| Activity history page (day groups, Person / Event type filters, Open link) | Activity history | ✅ Module 8 (also shows the project name on each line, since the timeline spans all projects) |
 | Notification bell with unread count | Top bar | Module 9 |
 | Dashboard (stats, burndown, workload, my tasks, recent activity) | Dashboard | Module 10 |
 
@@ -190,7 +191,8 @@ Order follows dependencies: each module builds on the ones before it.
 | **Features** | Every change writes an activity entry (one place, from the service layer); workspace timeline grouped by day; filters by person and event type (in the URL); task history inside the task dialog |
 | **Tables** | `activity_logs` |
 | **Done when** | Every action from Modules 2–6 appears in the history with who, what and when. |
-| **Status** | ⬜ Not started |
+| **Built** | `activity_logs` table (+ CHECK constraints); one recorder that every service reports to (29 event kinds across tasks, subtasks, comments, sprints, projects, roles, permissions, invites and sign-ups); `GET /api/activity?user&type&cursor` (30 per page, newest first, total); `GET /api/projects/:key/tasks/:number/activity`; Activity history page `/activity` (grouped by day, filters in the URL, Load more); History section in the task dialog |
+| **Status** | ✅ Approved 2026-11-27 |
 
 ### Module 9 — Real-Time Notifications
 | | |
@@ -229,7 +231,7 @@ Order follows dependencies: each module builds on the ones before it.
 | 5 | Tasks & Issues | ✅ Approved 2026-11-26 |
 | 6 | Kanban Board | ✅ Approved 2026-11-26 |
 | 7 | Search, Filters & Pagination | ✅ Approved 2026-11-27 |
-| 8 | Activity History | ⬜ Not started |
+| 8 | Activity History | ✅ Approved 2026-11-27 |
 | 9 | Real-Time Notifications | ⬜ Not started |
 | 10 | Dashboard & Analytics | ⬜ Not started |
 | 11 | Finishing | ⬜ Not started |
@@ -271,3 +273,9 @@ Legend: ⬜ not started · ⏳ in progress · 🧪 waiting for user test · ✅ 
 | 2026-11-27 | Debounce = the query function waits 250 ms on an abortable timer; TanStack Query aborts it when the text changes | Debounce and request cancellation with no `useEffect`; only changed search text waits, paging and filters load at once |
 | 2026-11-27 | Text filters kept in the URL use `<UrlTextInput>` (local text while typing, synced from the URL when it changes from outside) | React Router updates the URL asynchronously, so a box reading straight from the URL dropped characters when typing fast (also fixed on the board) |
 | 2026-11-27 | Global search: picking a project opens its Board; picking a task opens `/projects/KEY/tasks?task=KEY-N` | Same as the prototype |
+| 2026-11-27 | Activity = typed events (Zod discriminated union in `core`) stored as JSON, turned into sentences by the web app | Names and keys are copied in, so history still reads right after a rename or delete; the wording lives in one place (`describe.tsx`) and every event kind must be handled or it won't compile |
+| 2026-11-27 | One recorder (`createActivityRecorder`) that every service calls after a change succeeds; Module 9 notifications will listen to the same events | "Every change writes an activity entry from one place". A failed history write is logged and doesn't fail the request, because the change itself is already saved |
+| 2026-11-27 | Visibility: project, sprint, task and comment events follow project visibility (members + Admins); user events (roles, permissions, invites) only for `user:manage` / `role:manage`; a deleted project's events only for Admins | User's choice (recommended); invites contain email addresses |
+| 2026-11-27 | Autosaved description edits by the same person within 10 minutes = one entry; reordering cards inside a board column isn't recorded | Keeps the history readable |
+| 2026-11-27 | Each entry gets a strictly later time than the previous one (≤ 1 ms later) and the timeline pages by (created_at, id) | Several fields saved at once keep their order; "Load more" never skips or repeats an entry |
+| 2026-11-27 | History starts at Module 8; earlier changes can't be rebuilt | User agreed |
